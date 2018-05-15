@@ -140,9 +140,9 @@ namespace SabberStoneCoreAi.POGame
 
 		}
 
-		public POGame getCopy()
+		public POGame getCopy(bool debug)
 		{
-			return new POGame(this.origGame, this.debug);
+			return new POGame(origGame, debug);
 		}
 
 
@@ -163,7 +163,7 @@ namespace SabberStoneCoreAi.POGame
 				str.AppendLine(game.Player2.Hero.FullPrint());
 				str.AppendLine(string.Format("Opponent Hand Cards: {0}", game.Player2.HandZone.Count));
 			}
-			if (game.CurrentPlayer == game.Player1)
+			if (game.CurrentPlayer == game.Player2)
 			{
 				str.AppendLine(string.Format("Opponent Hand Cards: {0}", game.Player1.HandZone.Count));
 				str.AppendLine(game.Player1.Hero.FullPrint());
