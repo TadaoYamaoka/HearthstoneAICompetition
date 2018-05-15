@@ -14,10 +14,12 @@ namespace SabberStoneCoreAi.POGame
 	partial class POGame
 	{
 		private Game game;
+		private Game origGame;
 		private bool debug;
 			
 		public POGame(Game game, bool debug)
 		{
+			this.origGame = game;
 			this.game = game.Clone();
 			game.Player1.Game = game;
 			game.Player2.Game = game;
@@ -112,9 +114,35 @@ namespace SabberStoneCoreAi.POGame
 			game.Process(task);
 		}
 
+		/**
+		 * Simulates the tasks against the current game and
+		 * returns a Dictionary with the following POGame-Object
+		 * for each task (or null if an exception happened
+		 * during that game)
+		 */
+		public Dictionary<PlayerTask, POGame> Simulate(List<PlayerTask> tasksToSimulate)
+		{
+			Dictionary<PlayerTask, POGame> simulated = new Dictionary<PlayerTask, POGame>();
+			foreach (PlayerTask task in tasksToSimulate)
+			{
+				Game clone = this.origGame.Clone();
+				try
+				{
+					clone.Process(task);
+					simulated.Add(task, new POGame(clone, this.debug));
+				}
+				catch (Exception)
+				{
+					simulated.Add(task, null);
+				}
+			}
+			return simulated;
+
+		}
+
 		public POGame getCopy()
 		{
-			return new POGame(game, this.debug);
+			return new POGame(this.origGame, this.debug);
 		}
 
 
