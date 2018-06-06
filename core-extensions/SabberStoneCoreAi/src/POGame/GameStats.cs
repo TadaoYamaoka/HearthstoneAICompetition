@@ -1,10 +1,8 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.Text;
 using SabberStoneCore.Enums;
 using SabberStoneCore.Model;
-using SabberStoneCore.Tasks.SimpleTasks;
 
 namespace SabberStoneCoreAi.POGame
 {
@@ -14,6 +12,8 @@ namespace SabberStoneCoreAi.POGame
 		private int nr_games = 0;
 		private int[] wins = new[] { 0, 0 };
 		private long[] time_per_player = new[] {0L, 0L};
+		private int[] exception_count = new[] {0, 0};
+		private List<string> exceptions = new List<string>();
 
 		//Todo add getter for each private variable
 
@@ -36,6 +36,19 @@ namespace SabberStoneCoreAi.POGame
 			time_per_player[1] += playerWatches[1].ElapsedMilliseconds;
 		}
 
+		public void registerException(Game game, Exception e)
+		{
+			if (game.Player1.PlayState == PlayState.CONCEDED)
+			{
+				exception_count[0] += 1;
+			}
+			else if (game.Player2.PlayState == PlayState.CONCEDED)
+			{
+				exception_count[1] += 1;
+			}
+			exceptions.Add(e.Message);
+		}
+
 		public void printResults()
 		{
 			if (nr_games > 0)
@@ -44,6 +57,16 @@ namespace SabberStoneCoreAi.POGame
 							  $"Avg. {(time_per_player[0] + time_per_player[1]) / nr_games} per game " +
 							  $"and {(time_per_player[0] + time_per_player[1]) / (nr_games * turns)} per turn!");
 				Console.WriteLine($"playerA {wins[0] * 100 / nr_games}% vs. playerB {wins[1] * 100 / nr_games}%!");
+				if (exceptions.Count > 0)
+				{
+					Console.WriteLine($"Games lost due to exceptions: playerA - {exception_count[0]}; playerB - {exception_count[1]}");
+					Console.WriteLine("Exception messages:");
+					foreach (var msg in exceptions)
+					{
+						Console.WriteLine($"\t{msg}");
+					}
+					Console.WriteLine();
+				}
 			} else
 			{
 				Console.WriteLine("No games played yet. Use Gamehandler.PlayGame() to add games.");
