@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Diagnostics;
 using SabberStoneCore.Config;
 using SabberStoneCore.Enums;
@@ -6,7 +6,6 @@ using SabberStoneCore.Model;
 using SabberStoneCore.Model.Entities;
 using SabberStoneCore.Tasks;
 using SabberStoneCoreAi.Agent;
-using SabberStoneCoreAi.POGame;
 
 namespace SabberStoneCoreAi.POGame
 {
@@ -83,6 +82,9 @@ namespace SabberStoneCoreAi.POGame
 				game.State = State.COMPLETE;
 				game.CurrentPlayer.PlayState = PlayState.CONCEDED;
 				game.CurrentOpponent.PlayState = PlayState.WON;
+
+				if (addToGameStats && game.State != State.INVALID)
+					gameStats.registerException(game, e);
 			}
 
 			if (game.State == State.INVALID)
