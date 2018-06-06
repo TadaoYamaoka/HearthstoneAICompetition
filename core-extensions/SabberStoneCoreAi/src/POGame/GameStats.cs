@@ -98,5 +98,20 @@ namespace SabberStoneCoreAi.POGame
 			}
 		}
 
+		public int PlayerA_Exceptions
+		{
+			get
+			{
+				return this.exception_count[0];
+			}
+		}
+
+		public int PlayerB_Exceptions
+		{
+			get
+			{
+				return this.exception_count[1];
+			}
+		}
 	}
 }
