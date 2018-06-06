@@ -13,7 +13,7 @@ namespace SabberStoneCoreAi.POGame
 		private int[] wins = new[] { 0, 0 };
 		private long[] time_per_player = new[] {0L, 0L};
 		private int[] exception_count = new[] {0, 0};
-		private List<string> exceptions = new List<string>();
+		private Dictionary<int, string> exceptions = new Dictionary<int, string>();
 
 		//Todo add getter for each private variable
 
@@ -46,7 +46,7 @@ namespace SabberStoneCoreAi.POGame
 			{
 				exception_count[1] += 1;
 			}
-			exceptions.Add(e.Message);
+			exceptions.Add(nr_games, e.Message);
 		}
 
 		public void printResults()
@@ -61,9 +61,9 @@ namespace SabberStoneCoreAi.POGame
 				{
 					Console.WriteLine($"Games lost due to exceptions: playerA - {exception_count[0]}; playerB - {exception_count[1]}");
 					Console.WriteLine("Exception messages:");
-					foreach (var msg in exceptions)
+					foreach (var e in exceptions)
 					{
-						Console.WriteLine($"\t{msg}");
+						Console.WriteLine($"\tGame {e.Key}: {e.Value}");
 					}
 					Console.WriteLine();
 				}
