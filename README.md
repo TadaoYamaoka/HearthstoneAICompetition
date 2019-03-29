@@ -1,27 +1,28 @@
 <p align="center">
-<img src="docs/readme/sabberstoneNew.png" alt="SabberStone logo" height="80%"/>
+<img src="docs/readme/HearthstoneAICompetition.png" alt="Competition logo" height="80%"/>
 </p>
 
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-[![Travis Build Status](https://travis-ci.org/HearthSim/SabberStone.svg?branch=master)](https://travis-ci.org/HearthSim/SabberStone)
-[![AppVeyor Build status](https://ci.appveyor.com/api/projects/status/cncu269gxx9x6l3i?svg=true)](https://ci.appveyor.com/project/Bert-Proesmans/sabberstone)
+# HearthstoneAI Comeptition 2019
 
-# SabberStone 2.1
-Massive changes and updates are applied!
-Please check the Changelog: https://github.com/HearthSim/SabberStone/wiki/Changelog
+Welcome to the 2019 Edition of the Hearthstone AI Competition. We are happy to annouce that this competition will be part of the IEEE Conference on Games [Link](http://ieee-cog.org/). More information including sourcecode of previous year's submissions can be found on the official competition homepage [Link](http://www.ci.ovgu.de/Research/HearthstoneAI.html).
 
 # Overview
 
-**State of Implementation: 88% (Rastakhan's Rumble 3%, The Boomsday Project 95%, The Witchwood 97%) of current Standard Cards (Year of the ... Raaaaaaveeeen)!** ***(16.01.2019)***
+The collectible online card game Hearthstone features a rich testbed and poses unique demands for generating artificial intelligence agents. The game is a turn-based card game between two opponents, using constructed decks of thirty cards along with a selected hero with a unique power. Players use their limited mana crystals to cast spells or summon minions to attack their opponent, with the goal to reduce the opponent’s health to zero. The competition aims to promote the stepwise development of fully autonomous AI agents in the context of Hearthstone.
 
-SabberStone is just another Hearthstone simulator and implementation, written in C#. The project was started in Nov'16 while trying to implement aura, buffs & triggers into Brimstone. Focused to prototype my so called onion system I created SabberStone, which is using a layer approach to handle entity changing enchantments. Since then I haven't stopped implementing day by day new cards, new tests and new stuff. I created for fun a visualisation and a scoring based tree search a.i. which can be used to play games ([SabberStoneGui](/extensions/SabberStoneGui)).
+Entrants will submit agents to participate in one of the two tracks:
 
-By now this is a one man show, but there is still a lot of work to do, so any help is appreciated. The base code of Brimstone was a great inspiration for this project. Big thanks to **@Pattux**, **@Patashu** for helping on hearthstone super science problems ^^ thx **@Katy** for inspiration. And thx a lot to **@Citiral**, **@BertP** for working out on the stove implementation. And thx to **@Milva** who did a refactoring on the aura & enchantment system, with great value and is working hard for this project! You're welcome!
+* **Premade Deck Playing”-track:** participants will receive a list of three known decks and three decks unknown prior submission. During evaluation we will simulate all possible matchups for at least 100 games to determine the average win-rate for each agent. Determining and using the characteristics of the player’s and the opponent’s deck to the player’s advantage will help in winning the game. The decks for the premade deck playing track can be found under:
+  * Decks.AggroPirateWarrior,
+  * Decks.RenoKazakusMage,
+  * Decks.MidrangeJadeShaman
+  * Three more meta-decks will be used, but will remain unknown to the participants till the final submission deadline.
+* **“User Created Deck Playing”-track:** the competition framework allows agents to define their own deck. Finding a deck that can consistently beat a vast amount of other decks will play a key role in this competition track. Additionally, it gives the participants the chance in optimizing the agents’ strategy to the characteristics of their chosen deck.
 
-Join us on [Discord](https://discord.gg/my9WTwK)!
+As long as the number of subsmission remains below 32, we will use a round robin tournament to determine the best submissions based on their average win-rate. In case more agents are submitted we will use multiple smaller round-robin tournaments to determine likely candidates and use a final round robin tournament for determining the best three submissions.
 
-**Sabberstone Simulator can be connected to the real Hearthstone client!**
-![Preview SabberStone connected to the Stove project](docs/readme/stove.PNG)
+**Competition Entry Deadline: July 15th 2019 23:59 UTC-12**
+
 
 ### Project Structure ###
 
@@ -45,72 +46,14 @@ Join us on [Discord](https://discord.gg/my9WTwK)!
 
   A test project that shows off a visual implementation of the SimpleAi project. This is probably where beginners should start looking at. There is a simple GUI which allows different decks to play against each other with different strategys. Check out the Wiki [Link](https://github.com/HearthSim/SabberStone/wiki/SabberStoneGui) for informations about the use of SimpleUi.
 
-### Cards Implementation
-**Basic & Classic**
-* **100% Basic (142 Cards)**
-* **100%% Classic (240 Cards)**
-* 76% Hall of Fame (13 Cards)
-
-**Adventures**
-* **100% Blackrock Mountain (31 Cards)**
-* **100% One Night in Karazhan (45 Cards)**
-* *93% The League of Explorers (45 Cards) (needs to be upgraded to new system)*
-
-**Expensions**
-* *3% Rastakhan's Rumble (135 Cards)*
-* *95% The Boomsday Project (135 Cards)*
-* *97% The Witchwood (135 Cards)*
-* **100% Kobolds and Catacombs (135 Cards)**
-* **100% Knights of the Frozen Throne (135 Cards)**
-* **100% Journey to Un'Goro (135 cards)**
-* *91% The Grand Tournament (132 Cards) (needs to be upgraded to new system)*
-* **100% Whispers of the Old Gods (134 Cards)**
-* **100% Mean Streets of Gadgetzan (132 Cards)**
-* 79% Goblins vs Gnomes (123 cards)
-* **100% Curse of Naxxramas (30 cards)**
-
-**Not Implemented Standard Cards**
-##### Rastakhan's Rumble
-- Most
-
-##### The Boomsday Project
-- [BOT_299] Omega Assembly
-- [BOT_406] Supercollider
-- [BOT_436] Prismatic Lens
-- [BOT_453] Shooting Star
-- [BOT_912] Kangor's Endless Army
-- [BOT_914] Whizbang the Wonderful
-
-##### The Witchwood
-- [GIL_198] Azalina Soulthief
-- [GIL_655] Festeroot Hulk
-- [GIL_681] Nightmare Amalgam
-
-*(Standard is beeing prioritized.)*
-
-### ToDo List ###
-
-- [x] move SabberStone to Github
-- [x] start Wiki for SabberStone
-- [x] moved from .NET Framework to .NET Core
-- [x] make tasksystem stateful
-- [ ] create a sync with a current game (hook on the power.log)
-- [ ] integrate inter phases split.
-- [ ] implement caching for performance opt.
-- [ ] fill wiki for SabberStone
-
-### Requirements
-
-* Windows, macOS or Linux
-  - [Visual Studio 2017 RC](https://www.microsoft.com/net/core#windowsvs2017) or [Visual Studio Code](https://code.visualstudio.com/) for best .NET Core support
-  - [.NET Core](https://www.microsoft.com/net/download/core)
 
 ### Installation
 
-* tbd
+* See the Setup guide on [Link](http://www.ci.ovgu.de/Research/HearthstoneAI.html)
 
 ### Documentation
 
+* Competition Website [Link](http://www.ci.ovgu.de/Research/HearthstoneAI.html)
 * Wiki [Link](https://github.com/HearthSim/SabberStone/wiki)
 * SabberStoneCoreAi [Link](https://github.com/HearthSim/SabberStone/tree/master/SabberStoneCoreAi)
 * SabberStoneCoreGui [Link](https://github.com/HearthSim/SabberStone/wiki/SabberStoneGui)
