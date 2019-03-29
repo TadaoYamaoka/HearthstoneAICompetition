@@ -9,6 +9,9 @@ using SabberStoneCore.Model.Entities;
 using SabberStoneCore.Model.Zones;
 using SabberStoneCore.Tasks;
 using SabberStoneCoreAi.Meta;
+using SabberStoneCore.Tasks.PlayerTasks;
+
+
 namespace SabberStoneCoreAi.POGame
 {
 	partial class POGame

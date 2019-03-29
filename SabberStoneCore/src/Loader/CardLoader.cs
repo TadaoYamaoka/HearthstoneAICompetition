@@ -1,4 +1,17 @@
-﻿using System;
+﻿#region copyright
+// SabberStone, Hearthstone Simulator in C# .NET Core
+// Copyright (C) 2017-2019 SabberStone Team, darkfriend77 & rnilva
+//
+// SabberStone is free software: you can redistribute it and/or modify
+// it under the terms of the GNU Affero General Public License as
+// published by the Free Software Foundation, either version 3 of the
+// License.
+// SabberStone is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU Affero General Public License for more details.
+#endregion
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
@@ -10,7 +23,7 @@ namespace SabberStoneCore.Loader
 {
 	internal interface ICardLoader
 	{
-		List<Card> Load();
+		Card[] Load();
 	}
 
 	internal class CardLoader : ICardLoader
@@ -68,14 +81,13 @@ namespace SabberStoneCore.Loader
 			return dict;
 		}
 
-		public List<Card> Load()
+		public Card[] Load()
 		{
 			// Get XML definitions from assembly embedded resource
 			var cardDefsXml =
 				XDocument.Load(Assembly.GetManifestResourceStream("SabberStoneCore.Resources.CardDefs.xml"));
 			//var cardDefsXml = XDocument.Load(@"C:\Users\admin\Source\Repos\SabberStone\SabberStoneCore\Loader\Data\CardDefs.xml");
-			//var cardXml = XDocument.Load(Assembly.GetManifestResourceStream("SabberStoneCore.Loader.Data.CARD.xml"))
-			;
+			//var cardXml = XDocument.Load(Assembly.GetManifestResourceStream("SabberStoneCore.Loader.Data.CARD.xml"));
 			// Parse XML
 			var cardDefs = (from r in cardDefsXml.Descendants("Entity")
 							select new
@@ -96,7 +108,7 @@ namespace SabberStoneCore.Loader
 													: (tag.Attribute("type").Value == "LocString"
 														? (TagValue)tag.Element("enUS").Value
 														: (TagValue)0
-													)))).ToList(),
+													)))).ToArray(),
 								Requirements = (from req in r.Descendants("PlayRequirement")
 												select new
 												{
@@ -117,118 +129,20 @@ namespace SabberStoneCore.Loader
 														   : (rtag.Attribute("type").Value == "LocString"
 															   ? (TagValue)rtag.Element("enUS").Value
 															   : (TagValue)0
-														   )))).ToList()
-							}).ToList();
+														   )))).ToArray()
+							}).ToArray();
 
 			// Build card database
-			var cards = new List<Card>();
-
-			foreach (var card in cardDefs)
+			var cards = new Card[cardDefs.Length];
+			for(int i = 0; i < cardDefs.Length; i++)
 			{
 				// Skip PlaceholderCard etc.
 				//if (!dbfCards.ContainsKey(card.Id))
 				//    continue;
-
-				var c = new Card()
-				{
-					Id = card.Id,
-					AssetId = Int32.Parse(card.AssetId),
-					Tags = new Dictionary<GameTag, int>(),
-					PlayRequirements = card.Requirements,
-					Entourage = card.Entourage,
-					RefTags = new Dictionary<GameTag, int>(),
-				};
-
-				// Get unique int and bool tags, ignore duplicate and string tags
-				foreach (Tag tag in card.Tags)
-				{
-					if (c.Tags.ContainsKey(tag.GameTag))
-						continue;
-
-					if (tag.TagValue.HasIntValue)
-					{
-						c.Tags.Add(tag.GameTag, tag.TagValue);
-					}
-					else if (tag.TagValue.HasBoolValue)
-					{
-						c.Tags.Add(tag.GameTag, tag.TagValue ? 1 : 0);
-					}
-					else if (tag.TagValue.HasStringValue)
-					{
-						switch (tag.GameTag)
-						{
-							case GameTag.CARDNAME:
-								c.Name = tag.TagValue;
-								break;
-							case GameTag.CARDTEXT_INHAND:
-								c.Text = tag.TagValue;
-								break;
-						}
-					}
-
-					switch (tag.GameTag)
-					{
-						case GameTag.SECRET:
-							c.IsSecret = true;
-							break;
-						case GameTag.OVERLOAD:
-							c.HasOverload = true;
-							c.Overload = tag.TagValue;
-							break;
-						case GameTag.CHOOSE_ONE:
-							c.ChooseOne = true;
-							break;
-						case GameTag.QUEST:
-							c.IsQuest = true;
-							break;
-						case GameTag.UNTOUCHABLE:
-							c.Untouchable = true;
-							break;
-						case GameTag.HIDE_STATS:
-							c.HideStat = true;
-							break;
-						case GameTag.RECEIVES_DOUBLE_SPELLDAMAGE_BONUS:
-							c.ReceivesDoubleSpelldamageBonus = true;
-							break;
-					}
-				}
-
-				foreach (Tag tag in card.ReferenzTag)
-				{
-					if (c.RefTags.ContainsKey(tag.GameTag))
-						continue;
-
-					if (tag.TagValue.HasIntValue)
-					{
-						c.RefTags.Add(tag.GameTag, tag.TagValue);
-					}
-					else if (tag.TagValue.HasBoolValue)
-					{
-						c.RefTags.Add(tag.GameTag, tag.TagValue ? 1 : 0);
-					}
-					else if (tag.TagValue.HasStringValue)
-					{
-						switch (tag.GameTag)
-						{
-							case GameTag.CARDNAME:
-								c.Name = tag.TagValue;
-								break;
-							case GameTag.CARDTEXT_INHAND:
-								c.Text = tag.TagValue;
-								break;
-						}
-					}
-				}
-
-				// spell damage information add ... 
-				if (c.Text != null && (c.Text.Contains("$") || c[GameTag.AFFECTED_BY_SPELL_POWER] == 1))
-				{
-					c.Text += " @spelldmg";
-					c.IsAffectedBySpellDamage = true;
-				}
-				cards.Add(c);
+				var card = cardDefs[i];
+				cards[i] = new Card(card.Id, Int32.Parse(card.AssetId), card.Tags,
+						card.Requirements, card.Entourage, card.ReferenzTag);
 			}
-
 			return cards;
 		}
 	}

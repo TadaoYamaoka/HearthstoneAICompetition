@@ -1,56 +1,59 @@
-﻿using SabberStoneCore.Model.Entities;
+﻿#region copyright
+// SabberStone, Hearthstone Simulator in C# .NET Core
+// Copyright (C) 2017-2019 SabberStone Team, darkfriend77 & rnilva
+//
+// SabberStone is free software: you can redistribute it and/or modify
+// it under the terms of the GNU Affero General Public License as
+// published by the Free Software Foundation, either version 3 of the
+// License.
+// SabberStone is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU Affero General Public License for more details.
+#endregion
+using SabberStoneCore.Enums;
+using SabberStoneCore.Model;
+using SabberStoneCore.Model.Entities;
 
 namespace SabberStoneCore.Tasks.SimpleTasks
 {
-    public class ActivateDeathrattleTask : SimpleTask
-    {
-	    private readonly EntityType _type;
+	public class ActivateDeathrattleTask : SimpleTask
+	{
+		private readonly EntityType _type;
 
-	    public ActivateDeathrattleTask(EntityType type)
-	    {
-		    _type = type;
-	    }
+		public ActivateDeathrattleTask(EntityType type)
+		{
+			_type = type;
+		}
 
-	    public override TaskState Process()
-	    {
-		    foreach (IPlayable p in IncludeTask.GetEntities(_type, Controller, Source, Target, Playables))
-		    {
-			    p.ActivateTask(Enums.PowerActivation.DEATHRATTLE);
-			    p.AppliedEnchantments?.ForEach(e =>
-			    {
-				    if (e.Power.DeathrattleTask == null) return;
-				    ISimpleTask clone = e.Power.DeathrattleTask.Clone();
-				    clone.Game = Game;
-				    clone.Controller = e.Target.Controller;
-				    clone.Source = e.Target;
-				    clone.Target = e;
+		public override TaskState Process(in Game game, in Controller controller, in IEntity source, in IEntity target,
+			in TaskStack stack = null)
+		{
+			foreach (IPlayable p in IncludeTask.GetEntities(_type, controller, source, target, stack?.Playables))
+			{
+				p.ActivateTask(PowerActivation.DEATHRATTLE);
+				if (p.AppliedEnchantments != null)
+					foreach (Enchantment e in p.AppliedEnchantments)
+					{
+						ISimpleTask task = e.Power.DeathrattleTask;
+						if (task == null) continue;
+						game.TaskQueue.Enqueue(in task, e.Target.Controller, e.Target, e);
+					}
 
-				    Game.TaskQueue.Enqueue(clone);
-			    });
-			    if (p.Controller.ControllerAuraEffects[Enums.GameTag.EXTRA_DEATHRATTLES] == 1)
-			    {
-				    p.ActivateTask(Enums.PowerActivation.DEATHRATTLE);
-				    p.AppliedEnchantments?.ForEach(e =>
-				    {
-					    if (e.Power.DeathrattleTask == null) return;
-					    ISimpleTask clone = e.Power.DeathrattleTask.Clone();
-					    clone.Game = Game;
-					    clone.Controller = e.Target.Controller;
-					    clone.Source = e.Target;
-					    clone.Target = e;
-
-					    Game.TaskQueue.Enqueue(clone);
-				    });
+				if (p.Controller.ControllerAuraEffects[GameTag.EXTRA_DEATHRATTLES_BASE] == 1)
+				{
+					p.ActivateTask(PowerActivation.DEATHRATTLE);
+					if (p.AppliedEnchantments != null)
+						foreach (Enchantment e in p.AppliedEnchantments)
+						{
+							ISimpleTask task = e.Power.DeathrattleTask;
+							if (task == null) continue;
+							game.TaskQueue.Enqueue(in task, e.Target.Controller, e.Target, e);
+						}
 				}
-
 			}
 
-		    return TaskState.STOP;
-	    }
-
-	    public override ISimpleTask Clone()
-	    {
-		    return new ActivateDeathrattleTask(_type);
-	    }
-    }
+			return TaskState.COMPLETE;
+		}
+	}
 }

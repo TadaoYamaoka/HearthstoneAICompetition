@@ -1,10 +1,24 @@
-﻿using System.Collections.Generic;
+﻿#region copyright
+// SabberStone, Hearthstone Simulator in C# .NET Core
+// Copyright (C) 2017-2019 SabberStone Team, darkfriend77 & rnilva
+//
+// SabberStone is free software: you can redistribute it and/or modify
+// it under the terms of the GNU Affero General Public License as
+// published by the Free Software Foundation, either version 3 of the
+// License.
+// SabberStone is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU Affero General Public License for more details.
+#endregion
+using System.Collections.Generic;
+using SabberStoneCore.Auras;
 using SabberStoneCore.Enchants;
 using SabberStoneCore.Conditions;
 using SabberStoneCore.Enums;
-using SabberStoneCore.Model.Entities;
 using SabberStoneCore.Tasks;
 using SabberStoneCore.Tasks.SimpleTasks;
+// ReSharper disable RedundantEmptyObjectOrCollectionInitializer
 
 namespace SabberStoneCore.CardSets
 {
@@ -31,6 +45,46 @@ namespace SabberStoneCore.CardSets
 					ComplexTask.False(ComplexTask.Freeze(EntityType.TARGET)))
 			});
 
+			// ------------------------------------------- SPELL - MAGE
+			// [EX1_295] Ice Block - COST:3 
+			// - Fac: neutral, Set: expert1, Rarity: epic
+			// --------------------------------------------------------
+			// Text: <b>Secret:</b> When your hero takes fatal damage, prevent it and become <b>Immune</b> this turn.
+			// --------------------------------------------------------
+			// GameTag:
+			// - SECRET = 1
+			// --------------------------------------------------------
+			// RefTag:
+			// - IMMUNE = 1
+			// --------------------------------------------------------
+			cards.Add("EX1_295", new Power {
+				Trigger = new Trigger(TriggerType.PREDAMAGE)
+				{
+					TriggerSource = TriggerSource.HERO,
+					Condition = SelfCondition.IsHeroLethalPreDamaged,
+					FastExecution = true,
+					SingleTask = ComplexTask.Secret(
+						new AddEnchantmentTask("EX1_295o", EntityType.HERO))
+				}
+			});
+
+		}
+
+		private static void MageNonCollect(IDictionary<string, Power> cards)
+		{
+			// ------------------------------------- ENCHANTMENT - MAGE
+			// [EX1_295o] Ice Block (*) - COST:0 
+			// - Set: expert1, 
+			// --------------------------------------------------------
+			// Text: Your hero is <b>Immune</b> this turn.
+			// --------------------------------------------------------
+			// GameTag:
+			// - TAG_ONE_TURN_EFFECT = 1
+			// --------------------------------------------------------
+			cards.Add("EX1_295o", new Power
+			{
+				Enchant = Enchants.Enchants.GetAutoEnchantFromText("EX1_295o"),
+			});
 		}
 
 		private static void Rogue(IDictionary<string, Power> cards)
@@ -58,14 +112,7 @@ namespace SabberStoneCore.CardSets
 			// --------------------------------------------------------
 			// Text: Stealthed until your next turn.
 			// --------------------------------------------------------
-			cards.Add("EX1_128e", new Power {
-				Enchant = new Enchant(GameTag.STEALTH, EffectOperator.SET, 1),
-				Trigger = new Trigger(TriggerType.TURN_START)
-				{
-					SingleTask = new RemoveEnchantmentTask(),
-					RemoveAfterTriggered = true,
-				}
-			});
+			cards.Add("EX1_128e", Power.OneTurnStealthEnchantmentPower);
 
 		}
 
@@ -128,6 +175,21 @@ namespace SabberStoneCore.CardSets
 			});
 
 			// --------------------------------------- MINION - NEUTRAL
+			// [EX1_050] Coldlight Oracle - COST:3 [ATK:2/HP:2] 
+			// - Race: murloc, Fac: neutral, Set: expert1, Rarity: rare
+			// --------------------------------------------------------
+			// Text: <b>Battlecry:</b> Each player draws 2 cards.
+			// --------------------------------------------------------
+			// GameTag:
+			// - BATTLECRY = 1
+			// --------------------------------------------------------
+			cards.Add("EX1_050", new Power {
+				PowerTask = ComplexTask.Create(
+					new EnqueueTask(2, new DrawTask()),
+					new EnqueueTask(2, new DrawOpTask()))
+			});
+
+			// --------------------------------------- MINION - NEUTRAL
 			// [EX1_062] Old Murk-Eye - COST:4 [ATK:2/HP:4] 
 			// - Race: murloc, Fac: neutral, Set: hof, Rarity: legendary
 			// --------------------------------------------------------
@@ -140,11 +202,12 @@ namespace SabberStoneCore.CardSets
 			cards.Add("EX1_062", new Power {
 				Aura = new AdaptiveEffect(GameTag.ATK, EffectOperator.ADD, p =>
 				{
-					int i = 0;
-					foreach (Minion m in p.Controller.BoardZone)
-						if (m.Race == Race.MURLOC)
-							i++;
-					return i;
+					int count = 0;
+					var span = p.Controller.BoardZone.GetSpan();
+					for (int i = 0; i < span.Length; i++)
+						if (span[i].Race == Race.MURLOC)
+							count++;
+					return count;
 				})
 			});
 
@@ -196,6 +259,16 @@ namespace SabberStoneCore.CardSets
 				{
 					SingleTask = ComplexTask.DamageRandomTargets(1, EntityType.ENEMIES, 8)
 				}
+			});
+
+			// --------------------------------------- MINION - NEUTRAL
+			// [EX1_620] Molten Giant - COST:25 [ATK:8/HP:8] 
+			// - Set: expert1, Rarity: epic
+			// --------------------------------------------------------
+			// Text: Costs (1) less for each damage your hero has taken.
+			// --------------------------------------------------------
+			cards.Add("EX1_620", new Power {
+				Aura = new AdaptiveCostEffect(p => p.Controller.Hero.Damage)
 			});
 
 			// --------------------------------------- MINION - NEUTRAL
@@ -386,6 +459,7 @@ namespace SabberStoneCore.CardSets
 		public static void AddAll(Dictionary<string, Power> cards)
 		{
 			Mage(cards);
+			MageNonCollect(cards);
 			Rogue(cards);
 			RogueNonCollect(cards);
 			Warlock(cards);

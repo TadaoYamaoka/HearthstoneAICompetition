@@ -11,6 +11,7 @@ namespace SabberStoneCoreAi.POGame
 		private int turns = 0;
 		private int nr_games = 0;
 		private int[] wins = new[] { 0, 0 };
+		private int draws = 0;
 		private double[] time_per_player = new[] {0D, 0D};
 		private int[] exception_count = new[] {0, 0};
 		private Dictionary<int, string> exceptions = new Dictionary<int, string>();
@@ -29,8 +30,10 @@ namespace SabberStoneCoreAi.POGame
 
 			if (game.Player1.PlayState == PlayState.WON)
 				wins[0]++;
-			if (game.Player2.PlayState == PlayState.WON)
+			else if (game.Player2.PlayState == PlayState.WON)
 				wins[1]++;
+			else
+				draws++;
 
 			time_per_player[0] += playerWatches[0].Elapsed.TotalMilliseconds;
 			time_per_player[1] += playerWatches[1].Elapsed.TotalMilliseconds;
@@ -56,7 +59,7 @@ namespace SabberStoneCoreAi.POGame
 				Console.WriteLine($"{nr_games} games with {turns} turns took {(time_per_player[0] + time_per_player[1]).ToString("F4")} ms => " +
 							  $"Avg. {((time_per_player[0] + time_per_player[1]) / nr_games).ToString("F4")} per game " +
 							  $"and {((time_per_player[0] + time_per_player[1]) / (nr_games * turns)).ToString("F8")} per turn!");
-				Console.WriteLine($"playerA {wins[0] * 100 / nr_games}% vs. playerB {wins[1] * 100 / nr_games}%!");
+				Console.WriteLine($"playerA {wins[0] * 100 / nr_games}% vs. playerB {wins[1] * 100 / nr_games}%! number of draws: {draws}");
 				if (exceptions.Count > 0)
 				{
 					Console.WriteLine($"Games lost due to exceptions: playerA - {exception_count[0]}; playerB - {exception_count[1]}");

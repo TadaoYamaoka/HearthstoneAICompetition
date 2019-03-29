@@ -1,5 +1,19 @@
-﻿using System.Collections.Generic;
+﻿#region copyright
+// SabberStone, Hearthstone Simulator in C# .NET Core
+// Copyright (C) 2017-2019 SabberStone Team, darkfriend77 & rnilva
+//
+// SabberStone is free software: you can redistribute it and/or modify
+// it under the terms of the GNU Affero General Public License as
+// published by the Free Software Foundation, either version 3 of the
+// License.
+// SabberStone is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU Affero General Public License for more details.
+#endregion
+using System.Collections.Generic;
 using SabberStoneCore.Actions;
+using SabberStoneCore.Auras;
 using SabberStoneCore.Enchants;
 using SabberStoneCore.Conditions;
 using SabberStoneCore.Enums;
@@ -81,8 +95,7 @@ namespace SabberStoneCore.CardSets
 					SingleTask = ComplexTask.Create(
 						new ConditionTask(EntityType.SOURCE, SelfCondition.IsHandFull),
 						new FlagTask(false, ComplexTask.Secret(
-							new CopyTask(EntityType.TARGET, 2),
-							new AddStackTo(EntityType.HAND))))
+							new CopyTask(EntityType.TARGET, Zone.HAND, 2))))
 				}
 			});
 
@@ -196,8 +209,7 @@ namespace SabberStoneCore.CardSets
 			cards.Add("FP1_025", new Power {
 				PowerTask = ComplexTask.Create(
 					new DestroyTask(EntityType.TARGET, true),
-					new CopyTask(EntityType.TARGET, 1),
-					new SummonTask())
+					new CopyTask(EntityType.TARGET, Zone.PLAY))
 			});
 
 		}
@@ -307,37 +319,7 @@ namespace SabberStoneCore.CardSets
 			// - SECRET = 1
 			// --------------------------------------------------------
 			cards.Add("FP1_004", new Power {
-				DeathrattleTask = ComplexTask.Create(
-					new ConditionTask(EntityType.SOURCE, SelfCondition.IsZoneCount(Zone.SECRET, 5)),
-					new FlagTask(false, ComplexTask.Create(
-						new IncludeTask(EntityType.DECK),
-						new FilterStackTask(SelfCondition.IsSecret),
-						new FuncPlayablesTask(stack =>
-						{
-							if (stack.Count == 0)
-								return null;
-
-							Controller c = stack[0].Controller;
-							do
-							{
-								IPlayable pick = Util.Choose(stack);
-								if (c.SecretZone.Any(p => p.Card.AssetId == pick.Card.AssetId))
-								{
-									stack.Remove(pick);
-									continue;
-								}
-
-								c.DeckZone.Remove(pick);
-								pick.Power.Trigger?.Activate(pick);
-								c.SecretZone.Add((Spell)pick);
-								if (c == c.Game.CurrentPlayer)
-									pick.IsExhausted = true;
-								break;
-
-							} while (stack.Count > 0);
-
-							return null;
-						}))))
+				DeathrattleTask = ComplexTask.PutSecretFromDeck
 			});
 
 			// --------------------------------------- MINION - NEUTRAL
@@ -451,7 +433,8 @@ namespace SabberStoneCore.CardSets
 						{
 							if (graveyard[i] is Minion m && m.ToBeDestroyed)
 							{
-								Generic.SummonBlock.Invoke(c, (Minion) Entity.FromCard(c, m.Card), -1);
+								if (c.BoardZone.IsFull) return 0;
+								Generic.SummonBlock.Invoke(c.Game, (Minion) Entity.FromCard(c, m.Card), -1);
 								j++;
 							}
 							i--;
@@ -479,7 +462,7 @@ namespace SabberStoneCore.CardSets
 					if ((c.GraveyardZone.Any(p => p.Card.AssetId == 1797 && p.ToBeDestroyed) ||
 					     c.Opponent.GraveyardZone.Any(p => p.Card.AssetId == 1797 && p.ToBeDestroyed)) &&
 					    !c.BoardZone.IsFull)
-						Generic.SummonBlock.Invoke(c, (Minion) Entity.FromCard(c, Cards.FromId("FP1_014t")), -1);
+						Generic.SummonBlock.Invoke(c.Game, (Minion) Entity.FromCard(c, Cards.FromId("FP1_014t")), -1);
 
 					return 0;
 				})
@@ -502,7 +485,7 @@ namespace SabberStoneCore.CardSets
 					if ((c.GraveyardZone.Any(p => p.Card.AssetId == 1796 && p.ToBeDestroyed) ||
 					     c.Opponent.GraveyardZone.Any(p => p.Card.AssetId == 1796 && p.ToBeDestroyed)) &&
 					    !c.BoardZone.IsFull)
-						Generic.SummonBlock.Invoke(c, (Minion) Entity.FromCard(c, Cards.FromId("FP1_014t")), -1);
+						Generic.SummonBlock.Invoke(c.Game, (Minion) Entity.FromCard(c, Cards.FromId("FP1_014t")), -1);
 
 					return 0;
 				})
@@ -537,7 +520,7 @@ namespace SabberStoneCore.CardSets
 			// - BATTLECRY = 1
 			// --------------------------------------------------------
 			cards.Add("FP1_017", new Power {
-				Aura = new Aura(AuraType.HANDS, new Effect(GameTag.COST, EffectOperator.ADD, 2))
+				Aura = new Aura(AuraType.HANDS, Effects.AddCost(2))
 				{
 					Condition = SelfCondition.IsBattlecryMinion
 				}
@@ -629,7 +612,7 @@ namespace SabberStoneCore.CardSets
 			// - DEATHRATTLE = 1
 			// --------------------------------------------------------
 			cards.Add("FP1_031", new Power {
-				Aura = new Aura(AuraType.CONTROLLER, new Effect(GameTag.EXTRA_DEATHRATTLES, EffectOperator.SET, 1))
+				Aura = new Aura(AuraType.CONTROLLER, new Effect(GameTag.EXTRA_MINION_DEATHRATTLES_BASE, EffectOperator.SET, 1))
 			});
 
 		}
@@ -663,7 +646,7 @@ namespace SabberStoneCore.CardSets
 			// Text: Your spells cost (5) more this turn.
 			// --------------------------------------------------------
 			cards.Add("FP1_030e", new Power {
-				Aura = new Aura(AuraType.OP_HAND, new Effect(GameTag.COST, EffectOperator.ADD, 5))
+				Aura = new Aura(AuraType.OP_HAND, Effects.AddCost(5))
 				{
 					Condition = SelfCondition.IsSpell,
 					RemoveTrigger = (TriggerType.TURN_END, SelfCondition.IsOpTurn)

@@ -1,4 +1,17 @@
-﻿using System.Collections.Generic;
+﻿#region copyright
+// SabberStone, Hearthstone Simulator in C# .NET Core
+// Copyright (C) 2017-2019 SabberStone Team, darkfriend77 & rnilva
+//
+// SabberStone is free software: you can redistribute it and/or modify
+// it under the terms of the GNU Affero General Public License as
+// published by the Free Software Foundation, either version 3 of the
+// License.
+// SabberStone is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU Affero General Public License for more details.
+#endregion
+using System.Collections.Generic;
 using System.Linq;
 using SabberStoneCore.Actions;
 using SabberStoneCore.Config;
@@ -7,8 +20,6 @@ using SabberStoneCore.Model;
 using SabberStoneCore.Model.Entities;
 using SabberStoneCore.Tasks.PlayerTasks;
 using Xunit;
-using Xunit.Abstractions;
-using Xunit.Sdk;
 
 namespace SabberStoneCoreTest.Basic
 {
@@ -20,8 +31,6 @@ namespace SabberStoneCoreTest.Basic
 		// brimstone tests class, added by me. they currently fail, see if you can make them pass :wink:
 		// besides those, test things like battlecries that summon minions vs sword of justice,
 		// violet teacher vs wild pyromancer, etc
-
-		private static readonly ITestOutputHelper output = new TestOutputHelper();
 
 		[Fact]
 		public void PhaseTest()
@@ -144,6 +153,7 @@ namespace SabberStoneCoreTest.Basic
 			game.Process(PlayCardTask.Any(game.CurrentPlayer, "Stormwind Champion"));
 			game.CurrentPlayer.BoardZone[0].Damage = 4;
 			game.Process(HeroPowerTask.Any(game.CurrentPlayer));
+			Assert.Equal(2, game.CurrentPlayer.BoardZone[1].Health);
 			game.Process(EndTurnTask.Any(game.CurrentPlayer));
 
 			game.Process(PlayCardTask.Any(game.CurrentPlayer, "Fiery Bat"));
@@ -152,6 +162,7 @@ namespace SabberStoneCoreTest.Basic
 			while (true)
 			{
 				Game clone = game.Clone();
+				Assert.Equal(2, clone.CurrentOpponent.BoardZone[1].Health);
 
 				clone.Process(MinionAttackTask.Any(clone.CurrentPlayer, clone.CurrentPlayer.BoardZone[0],
 					clone.CurrentOpponent.BoardZone[0]));
@@ -166,29 +177,29 @@ namespace SabberStoneCoreTest.Basic
 			}
 		}
 
-		[Fact]
-		public static void AuraTimingTest2()
-		{
-			var game = new Game(new GameConfig
-			{
-				StartPlayer = 1,
-				Player1HeroClass = CardClass.PALADIN,
-				Player2HeroClass = CardClass.HUNTER,
-				FillDecks = true,
-				Shuffle = false
-			});
-			game.Player1.BaseMana = 10;
-			game.StartGame();
+		//[Fact]
+		//public static void AuraTimingTest2()
+		//{
+		//	var game = new Game(new GameConfig
+		//	{
+		//		StartPlayer = 1,
+		//		Player1HeroClass = CardClass.PALADIN,
+		//		Player2HeroClass = CardClass.HUNTER,
+		//		FillDecks = true,
+		//		Shuffle = false
+		//	});
+		//	game.Player1.BaseMana = 10;
+		//	game.StartGame();
 
-			Minion minion = game.ProcessCard<Minion>("Stonetusk Boar");
-			Minion auraSource = game.ProcessCard<Minion>("Dire Wolf Alpha", null, true);
-			Minion minion2 = game.ProcessCard<Minion>("Stonetusk Boar");
-			Minion lurker = game.ProcessCard<Minion>("Moat Lurker", auraSource, true);
-			Game clone = game.Clone();
+		//	Minion minion = game.ProcessCard<Minion>("Stonetusk Boar");
+		//	Minion auraSource = game.ProcessCard<Minion>("Dire Wolf Alpha", null, true);
+		//	Minion minion2 = game.ProcessCard<Minion>("Stonetusk Boar");
+		//	Minion lurker = game.ProcessCard<Minion>("Moat Lurker", auraSource, true);
+		//	Game clone = game.Clone();
 
-			game.ProcessCard("Assassinate", lurker);
-			clone.ProcessCard("Assassinate", clone.CurrentPlayer.BoardZone[3]);
-		}
+		//	game.ProcessCard("Assassinate", lurker);
+		//	clone.ProcessCard("Assassinate", clone.CurrentPlayer.BoardZone[3]);
+		//}
 
 		[Fact]
 		public static void JaraxxusRepentance()
@@ -307,8 +318,81 @@ namespace SabberStoneCoreTest.Basic
 			Assert.Equal(6, game.CurrentPlayer.BoardZone.Count);
 		}
 
+		[Fact]
+		public static void TransformationInHand()
+		{
+			var game = new Game(new GameConfig
+			{
+				StartPlayer = 1,
+				FillDecks = true,
+				FillDecksPredictably = true,
+				Shuffle = false,
+			});
+			game.StartGame();
+
+			IPlayable blade = Generic.DrawCard(game.Player1, Cards.FromName("Molten Blade"));
+			IPlayable scroll = Generic.DrawCard(game.Player1, Cards.FromName("Shifting Scroll"));
+			IPlayable zerus = Generic.DrawCard(game.Player1, Cards.FromName("Shifter Zerus"));
+
+			game.EndTurn();
+			game.EndTurn();
+
+			// Next Turn
+			Assert.Equal(blade.Cost, blade.Card.Cost);
+			Assert.Equal(scroll.Cost, scroll.Card.Cost);
+			Assert.Equal(zerus.Cost, zerus.Card.Cost);
+
+			game.EndTurn();
+			game.EndTurn();
+
+			// Next Turn
+			Assert.Equal(blade.Cost, blade.Card.Cost);
+			Assert.Equal(scroll.Cost, scroll.Card.Cost);
+			Assert.Equal(zerus.Cost, zerus.Card.Cost);
+		}
+
+		[Fact(Skip="should be fixed")]
+		public static void MurmuringKazakus()
+		{
+			var game = new Game(new GameConfig());
+			game.StartGame();
+
+			game.ProcessCard("Murmuring Elemental", null, true);
+			game.ProcessCard("Kazakus", null, true);
+			do
+			{
+				game.ChooseNthChoice(1);
+			} while (game.CurrentPlayer.Choice != null);
+
+		}
+
 		// Umbra + Doppelgangster + Val'anyr test
 
 		// AuraUpdate(others) test
+
+		[Fact]
+		public static void UmbraMorriganLoop()
+		{
+			var game = new Game(new GameConfig
+			{
+				StartPlayer = 1,
+				Player1Deck = new List<Card>
+				{
+					Cards.FromName("Wisp"),
+					Cards.FromName("Wisp"),
+					Cards.FromName("Wisp"),
+					Cards.FromName("Wisp"),
+					Cards.FromName("Dr. Morrigan"),
+				},
+				Shuffle = false,
+				FillDecks = false,
+			});
+			game.StartGame();
+
+			Assert.Single(game.CurrentPlayer.DeckZone);
+
+			game.ProcessCard("Spiritsinger Umbra", asZeroCost: true);
+			game.ProcessCard("Dr. Morrigan", asZeroCost: true);
+		}
 	}
 }

@@ -3,6 +3,8 @@ using System.Collections.Generic;
 using System.Text;
 using SabberStoneCore.Tasks;
 using SabberStoneCoreAi.POGame;
+using SabberStoneCore.Tasks.PlayerTasks;
+
 
 namespace SabberStoneCoreAi.Agent
 {

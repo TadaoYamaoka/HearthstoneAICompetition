@@ -5,6 +5,7 @@ using SabberStoneCore.Tasks;
 using SabberStoneCoreAi.POGame;
 using SabberStoneCoreAi.Agent;
 using SabberStoneCore.Enums;
+using SabberStoneCore.Tasks.PlayerTasks;
 
 namespace SabberStoneCoreAi.Agent.ExampleAgents
 {

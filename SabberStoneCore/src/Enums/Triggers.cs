@@ -1,4 +1,17 @@
-﻿namespace SabberStoneCore.Enums
+﻿#region copyright
+// SabberStone, Hearthstone Simulator in C# .NET Core
+// Copyright (C) 2017-2019 SabberStone Team, darkfriend77 & rnilva
+//
+// SabberStone is free software: you can redistribute it and/or modify
+// it under the terms of the GNU Affero General Public License as
+// published by the Free Software Foundation, either version 3 of the
+// License.
+// SabberStone is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU Affero General Public License for more details.
+#endregion
+namespace SabberStoneCore.Enums
 {
 	/// <summary> Events in Hearthstone. </summary>
 	public enum TriggerType
@@ -64,10 +77,18 @@
 		FROZEN,
 		/// <summary> The effect will be triggered when a hero gains armor. </summary>
 		ARMOR,
-		/// <summary> The effect will be triggered when equips a weapon. </summary>
+		/// <summary> The effect will be triggered when a hero equips a weapon. </summary>
 		EQUIP_WEAPON,
+		/// <summary> The effect will be triggered when a card is shuffled into a deck. </summary>
+		SHUFFLE_INTO_DECK,
+
+
+		WORGEN_TRANSFORM
 	}
 
+	/// <summary>
+	/// Types of entity that can invoke an event.
+	/// </summary>
 	public enum TriggerSource
 	{
 		ALL,
@@ -85,9 +106,13 @@
 		WEAPON,
 		HERO_POWER,
 		FRIENDLY_SPELL_CASTED_ON_THE_OWNER,
-		FRIENDLY_SPELL_CASTED_ON_OWN_MINIONS
+		FRIENDLY_SPELL_CASTED_ON_OWN_MINIONS,
+		FRIENDLY_EVENT_SOURCE
 	}
 
+	/// <summary>
+	/// Indicates where this trigger should be activated.
+	/// </summary>
 	public enum TriggerActivation
 	{
 		PLAY,
@@ -96,6 +121,9 @@
 		HAND_OR_PLAY
 	}
 
+	/// <summary>
+	/// Types of event sequences in Hearthstone.
+	/// </summary>
 	public enum SequenceType
 	{
 		None,

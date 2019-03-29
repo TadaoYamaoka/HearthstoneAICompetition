@@ -1,4 +1,17 @@
-﻿using System;
+﻿#region copyright
+// SabberStone, Hearthstone Simulator in C# .NET Core
+// Copyright (C) 2017-2019 SabberStone Team, darkfriend77 & rnilva
+//
+// SabberStone is free software: you can redistribute it and/or modify
+// it under the terms of the GNU Affero General Public License as
+// published by the Free Software Foundation, either version 3 of the
+// License.
+// SabberStone is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU Affero General Public License for more details.
+#endregion
+using System;
 using System.Collections.Generic;
 using System.Text.RegularExpressions;
 using SabberStoneCore.Enums;
@@ -14,14 +27,17 @@ namespace SabberStoneCore.Enchants
 	    private static Regex Health = new Regex(@"[+](\d) Health");
 
 	    public static readonly Enchant AddAttackScriptTag =
-		    new Enchant(GameTag.ATK, EffectOperator.ADD);
+		    new Enchant(Effects.Attack_N(0))
+		    {
+			    UseScriptTag = true
+		    };
 	    public static readonly Enchant AddHealthScriptTag =
-		    new Enchant(GameTag.HEALTH, EffectOperator.ADD, 0)
+		    new Enchant(Effects.Health_N(0))
 		    {
 			    UseScriptTag = true
 		    };
 	    public static readonly Enchant SetAttackScriptTag =
-		    new Enchant(GameTag.ATK, EffectOperator.SET, 0)
+		    new Enchant(Effects.SetAttack(0))
 		    {
 			    UseScriptTag = true
 		    };
@@ -42,12 +58,14 @@ namespace SabberStoneCore.Enchants
 		/// <param name="cardId"></param>
 		/// <returns></returns>
 		public static Enchant GetAutoEnchantFromText(string cardId)
-	    {
-			string text = Cards.FromId(cardId).Text;
-		    var effects = new List<Effect>();
+		{
+			Card card = Cards.FromId(cardId);
+			string text = card.Text;
+		    var effects = new List<IEffect>();
 			bool oneTurn = false;
+			bool mod = false;
 
-		    Match attackHealth = AttackHealth.Match(text);
+			Match attackHealth = AttackHealth.Match(text);
 		    Match attack = Attack.Match(text);
 		    Match health = Health.Match(text);
 		    Match set = SetAttackHealth.Match(text);
@@ -71,10 +89,16 @@ namespace SabberStoneCore.Enchants
 				effects.Add(Effects.SetAttack(Int32.Parse(set.Groups[1].Value)));
 				effects.Add(Effects.SetMaxHealth(Int32.Parse(set.Groups[2].Value)));
 			}
+			// generate magnetic enchants
+			else if (card[GameTag.MODULAR] == 1)
+			{
+				effects.AddRange(Effects.AttackHealth_N(0));
+				mod = true;
+			}
 
-		    if (text.Contains(@"<b>Taunt</b>"))
+			if (text.Contains(@"<b>Taunt</b>"))
 		    {
-			    effects.Add(Effects.Taunt);
+			    effects.Add(Effects.TauntEff);
 		    }
 
 		    if (text.Contains(@"<b>Windfury</b>"))
@@ -107,15 +131,24 @@ namespace SabberStoneCore.Enchants
 			    effects.Add(Effects.Lifesteal);
 		    }
 
+		    if (text.Contains(@"<b>Rush</b>"))
+		    {
+			    effects.Add(Effects.Rush);
+		    }
+
 			if (text.Contains("this turn"))
 		    {
 				oneTurn = true;
 		    }
 
-			return new Enchant (effects.ToArray())
+			var output = new Enchant(effects.ToArray())
 			{
 				IsOneTurnEffect = oneTurn
-		    };
+			};
+			if (mod)
+				output.UseScriptTag = true;
+
+			return output;
 	    }
 
 
@@ -123,42 +156,56 @@ namespace SabberStoneCore.Enchants
 
 	internal static class Effects
 	{
-		internal static Effect Attack_N(int n)
+		internal static IEffect Attack_N(int n)
 		{
-			return new Effect(GameTag.ATK, EffectOperator.ADD, n);
+			return ATK.Effect(EffectOperator.ADD, n);
 		}
 
-		internal static Effect Health_N(int n)
+		internal static IEffect Health_N(int n)
 		{
-			return new Effect(GameTag.HEALTH, EffectOperator.ADD, n);
+			return Health.Effect(EffectOperator.ADD, n);
 		}
 
-		internal static Effect[] AttackHealth_N(int n)
+		internal static IEffect[] AttackHealth_N(int n)
 		{
 			return new[] {Attack_N(n), Health_N(n)};
 		}
 
-		internal static Effect SetAttack(int n)
+		internal static IEffect SetAttack(int n)
 		{
-			return new Effect(GameTag.ATK, EffectOperator.SET, n);
+			return ATK.Effect(EffectOperator.SET, n);
 		}
 
-		internal static Effect SetMaxHealth(int n)
+		internal static IEffect SetMaxHealth(int n)
 		{
-			return new Effect(GameTag.HEALTH, EffectOperator.SET, n);
+			return Health.Effect(EffectOperator.SET, n);
 		}
 
-		internal static Effect[] SetAttackHealth(int n)
+		internal static IEffect[] SetAttackHealth(int n)
 		{
 			return new[] {SetAttack(n), SetMaxHealth(n)};
 		}
 
-		internal static Effect ReduceCost(int n)
+		internal static IEffect ReduceCost(int n)
 		{
-			return new Effect(GameTag.COST, EffectOperator.SUB, n);
+			return Cost.Effect(EffectOperator.SUB, n);
 		}
 
-		internal static Effect Taunt => new Effect(GameTag.TAUNT, EffectOperator.SET, 1);
+		internal static IEffect SetCost(int n)
+		{
+			return Cost.Effect(EffectOperator.SET, n);
+		}
+
+		internal static IEffect AddCost(int n)
+		{
+			return Cost.Effect(EffectOperator.ADD, n);
+		}
+
+		internal static IEffect TauntEff => Taunt.Effect();
+
+		internal static IEffect StealthEff => Stealth.Effect();
+
+		internal static IEffect CantBeTargetedBySpellsAndHeroPowers => CantBeTargetedBySpells.Effect();
 
 		internal static Effect Windfury => new Effect(GameTag.WINDFURY, EffectOperator.SET, 1);
 
@@ -167,5 +214,9 @@ namespace SabberStoneCore.Enchants
 		internal static Effect Immune => new Effect(GameTag.IMMUNE, EffectOperator.SET, 1);
 
 		internal static Effect Lifesteal => new Effect(GameTag.LIFESTEAL, EffectOperator.SET, 1);
+
+		internal static Effect Rush => new Effect(GameTag.RUSH, EffectOperator.SET, 1);
+
+		internal static Effect Echo => new Effect(GameTag.ECHO, EffectOperator.SET, 1);
 	}
 }

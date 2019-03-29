@@ -1,5 +1,19 @@
-﻿using System.Collections.Generic;
+﻿#region copyright
+// SabberStone, Hearthstone Simulator in C# .NET Core
+// Copyright (C) 2017-2019 SabberStone Team, darkfriend77 & rnilva
+//
+// SabberStone is free software: you can redistribute it and/or modify
+// it under the terms of the GNU Affero General Public License as
+// published by the Free Software Foundation, either version 3 of the
+// License.
+// SabberStone is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU Affero General Public License for more details.
+#endregion
+using System.Collections.Generic;
 using SabberStoneCore.Actions;
+using SabberStoneCore.Auras;
 using SabberStoneCore.Enchants;
 using SabberStoneCore.Conditions;
 using SabberStoneCore.Enums;
@@ -7,6 +21,7 @@ using SabberStoneCore.Model;
 using SabberStoneCore.Model.Entities;
 using SabberStoneCore.Tasks;
 using SabberStoneCore.Tasks.SimpleTasks;
+// ReSharper disable RedundantEmptyObjectOrCollectionInitializer
 
 namespace SabberStoneCore.CardSets.Standard
 {
@@ -48,7 +63,7 @@ namespace SabberStoneCore.CardSets.Standard
 			// [UNG_078] Tortollan Forager - COST:2 [ATK:2/HP:2] 
 			// - Set: ungoro, Rarity: common
 			// --------------------------------------------------------
-			// Text: <b>Battlecry:</b> Add a random minion with 5 or more Attack to your hand.
+			// Text: <b>Battlecry:</b> Add a random miterrornion with 5 or more Attack to your hand.
 			// --------------------------------------------------------
 			// GameTag:
 			// - BATTLECRY = 1
@@ -232,7 +247,7 @@ namespace SabberStoneCore.CardSets.Standard
 			// Text: Costs (0).
 			// --------------------------------------------------------
 			cards.Add("UNG_116te", new Power {
-				Enchant = new Enchant(GameTag.COST, EffectOperator.SET, 0)
+				Enchant = new Enchant(Effects.SetCost(0))
 			});
 
 			// ----------------------------------------- MINION - DRUID
@@ -280,7 +295,7 @@ namespace SabberStoneCore.CardSets.Standard
 			// - DEATHRATTLE = 1
 			// --------------------------------------------------------
 			cards.Add("UNG_111t1", new Power {
-				PowerTask = new ManaCrystalEmptyTask(1)
+				DeathrattleTask = new ManaCrystalEmptyTask(1)
 			});
 
 			// ----------------------------------------- MINION - DRUID
@@ -433,7 +448,9 @@ namespace SabberStoneCore.CardSets.Standard
 							var target = (ICharacter)plist[1];
 							if (target.Card.Untouchable)
 								return null;
+							EventMetaData temp = source.Game.CurrentEventData;
 							Generic.AttackBlock.Invoke(source.Controller, source, target, true);
+							source.Game.CurrentEventData = temp;
 							source.Controller.NumOptionsPlayedThisTurn--;
 							return null;
 						}))
@@ -452,7 +469,7 @@ namespace SabberStoneCore.CardSets.Standard
 			// --------------------------------------------------------
 			cards.Add("UNG_910", new Power {
 				PowerTask = ComplexTask.Create(
-					new IncludeTask(EntityType.OP_MINIONS),
+					new IncludeTask(EntityType.ALLMINIONS),
 					new FilterStackTask(EntityType.TARGET, RelaCondition.IsSideBySide),
 					new DamageTask(2, EntityType.TARGET, true),
 					new DamageTask(1, EntityType.STACK, true))
@@ -667,9 +684,8 @@ namespace SabberStoneCore.CardSets.Standard
 					SingleTask = ComplexTask.Create(
 						new ConditionTask(EntityType.SOURCE, SelfCondition.IsHandFull),
 						new FlagTask(false, ComplexTask.Secret(
-						new CopyTask(EntityType.TARGET, 1, true),
-						new AddStackTo(EntityType.HAND),
-						new AddAuraEffect(new Effect(GameTag.COST, EffectOperator.SET, 0), EntityType.STACK))))
+						new CopyTask(EntityType.TARGET, Zone.HAND, addToStack: true),
+						new AddAuraEffect(Effects.SetCost(0), EntityType.STACK))))
 				}
 			});
 
@@ -736,7 +752,7 @@ namespace SabberStoneCore.CardSets.Standard
 			// --------------------------------------------------------
 			cards.Add("UNG_955", new Power {
 				PowerTask = ComplexTask.Create(
-					new IncludeTask(EntityType.OP_MINIONS),
+					new IncludeTask(EntityType.ALLMINIONS),
 					new FilterStackTask(EntityType.TARGET, RelaCondition.IsSideBySide),
 					new DamageTask(15, EntityType.TARGET, true),
 					new DamageTask(3, EntityType.STACK, true))
@@ -856,14 +872,12 @@ namespace SabberStoneCore.CardSets.Standard
 			// - 542 = 1
 			// --------------------------------------------------------
 			cards.Add("UNG_953", new Power {
-				// TODO Verify with power.log
-				// TODO [UNG_953] Primalfin Champion && Test: Primalfin Champion_UNG_953
 				Trigger = new Trigger(TriggerType.AFTER_CAST)
 				{
 					TriggerSource = TriggerSource.FRIENDLY_SPELL_CASTED_ON_THE_OWNER,
 					SingleTask = ComplexTask.Create(
 						new GetGameTagTask(GameTag.ENTITY_ID, EntityType.TARGET),
-						new AddEnchantmentTask("UNG_953e", EntityType.SOURCE, true))
+						new AddEnchantmentTask("UNG_953e", EntityType.SOURCE, true, true))
 				}
 			});
 
@@ -1034,17 +1048,7 @@ namespace SabberStoneCore.CardSets.Standard
 			// --------------------------------------------------------
 			cards.Add("UNG_953e", new Power {
 				DeathrattleTask = ComplexTask.Create(
-					new IncludeTask(EntityType.TARGET),
-					new FuncPlayablesTask(list =>
-					{
-						IPlayable t = list[0];
-						return new List<IPlayable>
-						{
-							Entity.FromCard(t.Controller,
-								t.Game.IdEntityDic[t[GameTag.TAG_SCRIPT_DATA_NUM_1]]
-									.Card)
-						};
-					}),
+					GetCapturedCardTask.Task,
 					new AddStackTo(EntityType.HAND))
 			});
 
@@ -1085,9 +1089,8 @@ namespace SabberStoneCore.CardSets.Standard
 			// --------------------------------------------------------
 			cards.Add("UNG_022", new Power {
 				PowerTask = ComplexTask.Create(
-					new CopyTask(EntityType.TARGET, 1),
-					new AddEnchantmentTask("UNG_022e", EntityType.STACK),
-					new SummonTask())
+					new CopyTask(EntityType.TARGET, Zone.PLAY, addToStack: true),
+					new AddEnchantmentTask("UNG_022e", EntityType.STACK))
 
 			});
 
@@ -1323,7 +1326,7 @@ namespace SabberStoneCore.CardSets.Standard
 			// --------------------------------------------------------
 			cards.Add("UNG_063", new Power {
 				InfoCardId = "UNG_063e",
-				PowerTask = ComplexTask.Create(
+				ComboTask = ComplexTask.Create(
 					new GetGameTagControllerTask(GameTag.NUM_CARDS_PLAYED_THIS_TURN),
 					new MathSubstractionTask(1),
 					new AddEnchantmentTask("UNG_063e", EntityType.SOURCE, true))
@@ -1382,8 +1385,7 @@ namespace SabberStoneCore.CardSets.Standard
 			cards.Add("UNG_060", new Power {
 				PowerTask = ComplexTask.Create(
 					new DrawTask(true),
-					new CopyTask(EntityType.STACK, 1),
-					new AddStackTo(EntityType.HAND)),
+					new CopyTask(EntityType.STACK, Zone.HAND))
 			});
 
 			// ------------------------------------------ SPELL - ROGUE
@@ -1416,14 +1418,7 @@ namespace SabberStoneCore.CardSets.Standard
 						if (count <= p[GameTag.QUEST_PROGRESS]) return 0;
 
 						p[GameTag.QUEST_CONTRIBUTOR] = justPlayed.AssetId;
-						var task = new QuestProgressTask("UNG_067t1")
-						{
-							Game = p.Game,
-							Controller = p.Controller,
-							Source = p,
-							Target = null
-						};
-						p.Game.TaskQueue.Enqueue(task);
+						p.Game.TaskQueue.Enqueue(new QuestProgressTask("UNG_067t1"), p.Controller, p, null);
 
 						return 0;
 					})
@@ -1472,7 +1467,7 @@ namespace SabberStoneCore.CardSets.Standard
 			// --------------------------------------------------------
 			cards.Add("UNG_061", new Power {
 				// TODO: possible performance hit
-				Aura = new AdaptiveCostEffect(EffectOperator.SUB, p =>
+				Aura = new AdaptiveCostEffect(p =>
 				{
 					List<PlayHistoryEntry> history = p.Controller.PlayHistory;
 					CardClass heroClass = p.Controller.HeroClass;
@@ -1549,7 +1544,7 @@ namespace SabberStoneCore.CardSets.Standard
 			// [UNG_067t1] Crystal Core (*) - COST:5 
 			// - Set: ungoro, 
 			// --------------------------------------------------------
-			// Text: For the rest of the game, your minions are 5/5.
+			// Text: For the rest of the game, your minions are 4/4.
 			// --------------------------------------------------------
 			// GameTag:
 			// - ELITE = 1
@@ -1589,7 +1584,7 @@ namespace SabberStoneCore.CardSets.Standard
 			});
 
 			// ---------------------------------------- MINION - SHAMAN
-			// [UNG_202] Fire Plume Harbinger - COST:2 [ATK:1/HP:1] 
+			// [UNG_202] Fire Plume Harbinger - COST:2 [ATK:1/HP:1]
 			// - Race: elemental, Set: ungoro, Rarity: rare
 			// --------------------------------------------------------
 			// Text: <b>Battlecry:</b> Reduce the Cost of Elementals in your hand_by (1).
@@ -1890,7 +1885,15 @@ namespace SabberStoneCore.CardSets.Standard
 						Controller c = p[0].Controller;
 						if (c.DiscardedEntities.Count == 0)
 							return new List<IPlayable>(0);
-						return new List<IPlayable> {Entity.FromCard(c, c.Game.IdEntityDic[Util.Choose(c.DiscardedEntities)].Card)};
+						var minions = new List<IPlayable>(c.DiscardedEntities.Count);
+						c.DiscardedEntities.ForEach(q =>
+						{
+							if (c.Game.IdEntityDic[q] is Minion m)
+								minions.Add(m);
+						});
+						return minions.Count > 0
+							? new List<IPlayable>{Entity.FromCard(c, Util.Choose(list: minions).Card)}
+							: new List<IPlayable>(0);
 					}),
 					new SummonTask())
 			});
@@ -1950,13 +1953,15 @@ namespace SabberStoneCore.CardSets.Standard
 						new IncludeTask(EntityType.SOURCE),
 						new FuncPlayablesTask(list =>
 						{
-							IPlayable p = list[0];
-							IPlayable newEntity = Entity.FromCard(p.Controller, p.Card);
+							var p = (Minion) list[0];
+							var newEntity = (Minion) Entity.FromCard(p.Controller, p.Card);
 							p[GameTag.TAG_SCRIPT_DATA_ENT_1] = newEntity.Id;
 							newEntity[GameTag.TAG_SCRIPT_DATA_ENT_1] = newEntity.Id;
-							Generic.AddEnchantmentBlock.Invoke(p.Controller, Cards.FromId("UNG_836e"), newEntity, newEntity, 0, 0);
-							newEntity[GameTag.ATK] = p[GameTag.ATK] + 2;
-							newEntity[GameTag.HEALTH] = p[GameTag.HEALTH] + 2;
+							Generic.AddEnchantmentBlock.Invoke(p.Controller, Cards.FromId("UNG_836e"), newEntity, newEntity, 0, 0, false);
+							//newEntity[GameTag.ATK] = p[GameTag.ATK] + 2;
+							//newEntity[GameTag.HEALTH] = p[GameTag.HEALTH] + 2;
+							newEntity.AttackDamage = p.AttackDamage + 2;
+							newEntity.BaseHealth = p.BaseHealth + 2;
 
 							// separated trigger actually
 							newEntity[GameTag.REVEALED] = 1;
@@ -2262,7 +2267,7 @@ namespace SabberStoneCore.CardSets.Standard
 				{
 					TriggerActivation = TriggerActivation.HAND,
 					SingleTask = ComplexTask.Create(
-						new ChangeEntityTask(EntityType.SOURCE, CardType.WEAPON),
+						new ChangeEntityTask(EntityType.SOURCE, CardType.WEAPON, removeEnchantments: true),
 						new AddEnchantmentTask("UNG_929e", EntityType.SOURCE))
 				}
 			});
@@ -2284,7 +2289,9 @@ namespace SabberStoneCore.CardSets.Standard
 				},
 				Trigger = new Trigger(TriggerType.TURN_START)
 				{
-					SingleTask = new ChangeEntityTask(EntityType.TARGET, CardType.WEAPON)
+					SingleTask = ComplexTask.Create(
+						new ChangeEntityTask(EntityType.TARGET, CardType.WEAPON, removeEnchantments: true),
+						new AddEnchantmentTask("UNG_929e", EntityType.TARGET))
 				}
 			});
 
@@ -2540,7 +2547,7 @@ namespace SabberStoneCore.CardSets.Standard
 			// - DEATHRATTLE = 1
 			// --------------------------------------------------------
 			cards.Add("UNG_083", new Power {
-				PowerTask = new SummonTask("UNG_083t1", SummonSide.DEATHRATTLE)
+				DeathrattleTask = new SummonTask("UNG_083t1", SummonSide.DEATHRATTLE)
 			});
 
 			// --------------------------------------- MINION - NEUTRAL
@@ -2570,7 +2577,7 @@ namespace SabberStoneCore.CardSets.Standard
 			// - AURA = 1
 			// --------------------------------------------------------
 			cards.Add("UNG_085", new Power {
-				Aura = new Aura(AuraType.HAND, new Effect(GameTag.COST, EffectOperator.ADD, 2))
+				Aura = new Aura(AuraType.HAND, Effects.AddCost(2))
 				{
 					Condition = SelfCondition.IsMinion
 				}
@@ -2892,7 +2899,7 @@ namespace SabberStoneCore.CardSets.Standard
 						new FuncPlayablesTask(list =>
 						{
 							//Generic.CastSpell(list[1].Controller, (Spell)list[1], (ICharacter)list[0], 0);
-							list[1].ActivateTask(PowerActivation.POWER, list[0]);
+							list[1].ActivateTask(PowerActivation.POWER, (ICharacter)list[0]);
 							return null;
 						}))
 				}
@@ -2919,7 +2926,7 @@ namespace SabberStoneCore.CardSets.Standard
 			// - DEATHRATTLE = 1
 			// --------------------------------------------------------
 			cards.Add("UNG_845", new Power {
-				PowerTask = new AddCardTo("UNG_809t1", EntityType.HAND, 2)
+				DeathrattleTask = new AddCardTo("UNG_809t1", EntityType.HAND, 2)
 			});
 
 			// --------------------------------------- MINION - NEUTRAL
@@ -3073,20 +3080,23 @@ namespace SabberStoneCore.CardSets.Standard
 			// [UNG_067t1e] Crystallized (*) - COST:0 
 			// - Set: ungoro, 
 			// --------------------------------------------------------
-			// Text: Your minions are 5/5.
+			// Text: Your minions are 4/4.
 			// --------------------------------------------------------
 			// GameTag:
 			// - 758 = 1
 			// --------------------------------------------------------
 			cards.Add("UNG_067t1e", new Power {
 				Aura = new Aura(AuraType.HAND_AND_BOARD, "UNG_067t1e2")
+				{
+					Condition = SelfCondition.IsMinion
+				}
 			});
 
 			// ---------------------------------- ENCHANTMENT - NEUTRAL
 			// [UNG_067t1e2] Crystallized (*) - COST:0 
 			// - Set: ungoro, 
 			// --------------------------------------------------------
-			// Text: 5/5.
+			// Text: 4/4.
 			// --------------------------------------------------------
 			// GameTag:
 			// - 758 = 1
@@ -3122,7 +3132,7 @@ namespace SabberStoneCore.CardSets.Standard
 			// Text: Costs (5).
 			// --------------------------------------------------------
 			cards.Add("UNG_113e", new Power {
-				Enchant = new Enchant(GameTag.COST, EffectOperator.SET, 5)
+				Enchant = new Enchant(Effects.SetCost(5))
 			});
 
 			// ---------------------------------- ENCHANTMENT - NEUTRAL
@@ -3205,14 +3215,7 @@ namespace SabberStoneCore.CardSets.Standard
 			// --------------------------------------------------------
 			// Text: Stealthed until your next turn.
 			// --------------------------------------------------------
-			cards.Add("UNG_999t10e", new Power {
-				Enchant = new Enchant(new Effect(GameTag.STEALTH, EffectOperator.SET, 1)),
-				Trigger = new Trigger(TriggerType.TURN_START)
-				{
-					SingleTask = new RemoveEnchantmentTask(),
-					RemoveAfterTriggered = true,
-				}
-			});
+			cards.Add("UNG_999t10e", Power.OneTurnStealthEnchantmentPower);
 
 			// ---------------------------------- ENCHANTMENT - NEUTRAL
 			// [UNG_999t13e] Poison Spit (*) - COST:0 
@@ -3275,9 +3278,7 @@ namespace SabberStoneCore.CardSets.Standard
 			// - CANT_BE_TARGETED_BY_HERO_POWERS = 1
 			// --------------------------------------------------------
 			cards.Add("UNG_999t5e", new Power {
-				Enchant = new Enchant(
-					new Effect(GameTag.CANT_BE_TARGETED_BY_SPELLS, EffectOperator.SET, 1),
-					new Effect(GameTag.CANT_BE_TARGETED_BY_HERO_POWERS, EffectOperator.SET, 1))
+				Enchant = new Enchant(Effects.CantBeTargetedBySpellsAndHeroPowers)
 			});
 
 			// ---------------------------------- ENCHANTMENT - NEUTRAL

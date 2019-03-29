@@ -1,8 +1,21 @@
-﻿using SabberStoneCore.Actions;
+﻿#region copyright
+// SabberStone, Hearthstone Simulator in C# .NET Core
+// Copyright (C) 2017-2019 SabberStone Team, darkfriend77 & rnilva
+//
+// SabberStone is free software: you can redistribute it and/or modify
+// it under the terms of the GNU Affero General Public License as
+// published by the Free Software Foundation, either version 3 of the
+// License.
+// SabberStone is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU Affero General Public License for more details.
+#endregion
+using System.Collections.Generic;
+using SabberStoneCore.Actions;
 using SabberStoneCore.Enums;
 using SabberStoneCore.Model;
 using SabberStoneCore.Model.Entities;
-using System.Collections.Generic;
 
 namespace SabberStoneCore.Tasks.SimpleTasks
 {
@@ -32,12 +45,13 @@ namespace SabberStoneCore.Tasks.SimpleTasks
 
 		public bool SpellDmg { get; set; }
 
-		public override TaskState Process()
+		public override TaskState Process(in Game game, in Controller controller, in IEntity source, in IEntity target,
+			in TaskStack stack = null)
 		{
 			if (Amount < 1 && RandAmount < 1)
 				return TaskState.STOP;
 
-			IList<IPlayable> entities = IncludeTask.GetEntities(Type, Controller, Source, Target, Playables);
+			IList<IPlayable> entities = IncludeTask.GetEntities(Type, in controller, source, target, stack?.Playables);
 
 			for (int i = 0; i < entities.Count; i++)
 			{
@@ -45,23 +59,17 @@ namespace SabberStoneCore.Tasks.SimpleTasks
 				if (RandAmount > 0)
 				{
 					randAmount = Random.Next(0, RandAmount + 1);
-					Game.OnRandomHappened(true);
+					game.OnRandomHappened(true);
 				}
 
 				int amount = Amount + randAmount;
 
-				Game.Log(LogLevel.WARNING, BlockType.ACTION, "DamageTask", !Game.Logging? "":$"Amount is {amount} damage of {Source}.");
+				game.Log(LogLevel.WARNING, BlockType.ACTION, "DamageTask",
+					!game.Logging ? "" : $"Amount is {amount} damage of {source}.");
 
-				Generic.DamageCharFunc.Invoke(Source as IPlayable, entities[i] as ICharacter, amount, SpellDmg);
-			};
+				Generic.DamageCharFunc.Invoke(source as IPlayable, entities[i] as ICharacter, amount, SpellDmg);
+			}
 			return TaskState.COMPLETE;
-		}
-
-		public override ISimpleTask Clone()
-		{
-			var clone = new DamageTask(Amount, RandAmount, Type, SpellDmg);
-			clone.Copy(this);
-			return clone;
 		}
 	}
 }

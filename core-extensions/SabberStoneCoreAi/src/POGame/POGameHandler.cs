@@ -6,13 +6,13 @@ using SabberStoneCore.Model;
 using SabberStoneCore.Model.Entities;
 using SabberStoneCore.Tasks;
 using SabberStoneCoreAi.Agent;
+using SabberStoneCore.Tasks.PlayerTasks;
+using SabberStoneCoreAi.Utils;
 
 namespace SabberStoneCoreAi.POGame
 {
 	class POGameHandler
 	{
-		private bool debug;
-
 		private AbstractAgent player1;
 		private AbstractAgent player2;
 
@@ -21,9 +21,11 @@ namespace SabberStoneCoreAi.POGame
 
 		private GameStats gameStats;
 		private static readonly Random Rnd = new Random();
+		private bool repeatDraws=false;
+		private int maxTurns=50;
 
 
-		public POGameHandler(GameConfig gameConfig, AbstractAgent player1, AbstractAgent player2,  bool setupHeroes = true, bool debug=false)
+		public POGameHandler(GameConfig gameConfig, AbstractAgent player1, AbstractAgent player2,  bool setupHeroes = true, bool repeatDraws=false)
 		{
 			this.gameConfig = gameConfig;
 			this.setupHeroes = setupHeroes;
@@ -34,10 +36,9 @@ namespace SabberStoneCoreAi.POGame
 			player2.InitializeAgent();
 
 			gameStats = new GameStats();
-			this.debug = debug;
 		}
 
-		public bool PlayGame(bool addToGameStats=true)
+		public bool PlayGame(bool addToGameStats=true, bool debug=false)
 		{
 			Game game = new Game(gameConfig, setupHeroes);
 			player1.InitializeGame();
@@ -50,12 +51,16 @@ namespace SabberStoneCoreAi.POGame
 			Stopwatch[] watches = new[] {new Stopwatch(), new Stopwatch()};
 			
 			game.StartGame();
+			
 			try
 			{
-				while (game.State != State.COMPLETE && game.State != State.INVALID)
+				while (game.State != State.COMPLETE && game.State != State.INVALID )
 				{
 					if (debug)
 						Console.WriteLine("Turn " + game.Turn);
+
+					if  (game.Turn >= maxTurns)
+						break;
 
 					currentAgent = game.CurrentPlayer == game.Player1 ? player1 : player2;
 					Controller currentPlayer = game.CurrentPlayer;
@@ -87,7 +92,7 @@ namespace SabberStoneCoreAi.POGame
 					gameStats.registerException(game, e);
 			}
 
-			if (game.State == State.INVALID)
+			if (game.State == State.INVALID || (game.Turn >= maxTurns && repeatDraws))
 				return false;
 
 			if (addToGameStats)
@@ -98,13 +103,17 @@ namespace SabberStoneCoreAi.POGame
 			return true;
 		}
 
-		public void PlayGames(int nr_of_games, bool addToGameStats=true)
+		public void PlayGames(int nr_of_games, bool addResultToGameStats=true, bool debug=false)
 		{
+			ProgressBar pb = new ProgressBar(nr_of_games, 30, debug);
+			
 			for (int i = 0; i < nr_of_games; i++)
 			{
-				if (!PlayGame(addToGameStats))
+				if (!PlayGame(addResultToGameStats, debug))
 					i -= 1;		// invalid game
+				pb.Update(i);
 			}
+			Console.WriteLine();
 		}
 
 		public GameStats getGameStats()

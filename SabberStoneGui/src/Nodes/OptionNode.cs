@@ -1,8 +1,22 @@
-﻿using System.Collections.Generic;
+﻿#region copyright
+// SabberStone, Hearthstone Simulator in C# .NET Core
+// Copyright (C) 2017-2019 SabberStone Team, darkfriend77 & rnilva
+//
+// SabberStone is free software: you can redistribute it and/or modify
+// it under the terms of the GNU Affero General Public License as
+// published by the Free Software Foundation, either version 3 of the
+// License.
+// SabberStone is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU Affero General Public License for more details.
+#endregion
+using System.Collections.Generic;
 using System.Collections.Concurrent;
 using SabberStoneCore.Enums;
 using SabberStoneCore.Model;
 using SabberStoneCore.Tasks;
+using SabberStoneCore.Tasks.PlayerTasks;
 using SabberStoneCoreGui.Score;
 
 namespace SabberStoneCoreGui.Nodes
@@ -19,23 +33,23 @@ namespace SabberStoneCoreGui.Nodes
 
 		public string Hash;
 
-		private int _gameState = 0;
+		private int _gameState;
 		public bool IsWon => _gameState > 0;
 
 		public bool IsLost => _gameState < 0;
 
 		public bool IsRunning => _gameState == 0;
 
-		private int _endTurn = 0;
+		private int _endTurn;
 		public bool IsEndTurn => _endTurn > 0;
 
 		public bool IsRoot => PlayerTask == null;
 
-		public int Score { get; private set; } = 0;
+		public int Score { get; private set; }
 
 		public IScore Scoring { get; private set; }
 
-		private bool _isOpponentTurn = false;
+		private bool _isOpponentTurn;
 
 		public OptionNode(OptionNode parent, Game game, int playerId, PlayerTask playerTask, IScore scoring)
 		{
@@ -97,7 +111,7 @@ namespace SabberStoneCoreGui.Nodes
 		//}
 		public void Options(ref ConcurrentDictionary<string, OptionNode> optionNodes)
 		{
-			List<PlayerTask> options = _game.ControllerById(_playerId).Options(!_isOpponentTurn);
+			List<PlayerTask> options = _game.ControllerById(_playerId).Options(/*!_isOpponentTurn*/);
 
 			foreach (PlayerTask option in options)
 			{

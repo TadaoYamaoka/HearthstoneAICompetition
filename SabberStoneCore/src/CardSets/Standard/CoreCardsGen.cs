@@ -1,4 +1,18 @@
-﻿using System.Collections.Generic;
+﻿#region copyright
+// SabberStone, Hearthstone Simulator in C# .NET Core
+// Copyright (C) 2017-2019 SabberStone Team, darkfriend77 & rnilva
+//
+// SabberStone is free software: you can redistribute it and/or modify
+// it under the terms of the GNU Affero General Public License as
+// published by the Free Software Foundation, either version 3 of the
+// License.
+// SabberStone is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU Affero General Public License for more details.
+#endregion
+using System.Collections.Generic;
+using SabberStoneCore.Auras;
 using SabberStoneCore.Enchants;
 using SabberStoneCore.Conditions;
 using SabberStoneCore.Enums;
@@ -8,7 +22,7 @@ using SabberStoneCore.Model.Entities;
 using SabberStoneCore.Tasks;
 using SabberStoneCore.Tasks.SimpleTasks;
 using static SabberStoneCore.Enchants.Enchants;
-
+// ReSharper disable RedundantEmptyObjectOrCollectionInitializer
 
 namespace SabberStoneCore.CardSets.Standard
 {
@@ -142,7 +156,7 @@ namespace SabberStoneCore.CardSets.Standard
 			// - REQ_TARGET_TO_PLAY = 0
 			// --------------------------------------------------------
 			cards.Add("CS2_034", new Power {
-				PowerTask = new DamageTask(1, EntityType.TARGET, false)
+				PowerTask = new DamageTask(1, EntityType.TARGET)
 			});
 
 			// ------------------------------------ HERO_POWER - SHAMAN
@@ -171,7 +185,7 @@ namespace SabberStoneCore.CardSets.Standard
 			// --------------------------------------------------------
 			cards.Add("CS2_056", new Power {
 				PowerTask = ComplexTask.Create(
-					new DamageTask(2, EntityType.HERO, false),
+					new DamageTask(2, EntityType.HERO),
 					new DrawTask())
 			});
 
@@ -197,7 +211,7 @@ namespace SabberStoneCore.CardSets.Standard
 			// - REQ_NUM_MINION_SLOTS = 1
 			// --------------------------------------------------------
 			cards.Add("CS2_101", new Power {
-				PowerTask = new SummonTask("CS2_101t", SummonSide.DEFAULT)
+				PowerTask = new SummonTask("CS2_101t")
 			});
 
 			// ----------------------------------- HERO_POWER - WARRIOR
@@ -223,7 +237,7 @@ namespace SabberStoneCore.CardSets.Standard
 			// - REQ_MINION_OR_ENEMY_HERO = 0
 			// --------------------------------------------------------
 			cards.Add("DS1h_292", new Power {
-				PowerTask = new DamageTask(2, EntityType.OP_HERO, false)
+				PowerTask = new DamageTask(2, EntityType.OP_HERO)
 			});
 		}
 
@@ -609,7 +623,7 @@ namespace SabberStoneCore.CardSets.Standard
 			// Text: This minion has 1 Health.
 			// --------------------------------------------------------
 			cards.Add("CS2_084e", new Power {
-				Enchant = new Enchant(GameTag.HEALTH, EffectOperator.SET, 1)
+				Enchant = new Enchant(Effects.SetMaxHealth(1))
 			});
 
 			// ----------------------------------- ENCHANTMENT - HUNTER
@@ -1018,7 +1032,7 @@ namespace SabberStoneCore.CardSets.Standard
 			// Text: Attack has been changed to 1.
 			// --------------------------------------------------------
 			cards.Add("EX1_360e", new Power {
-				Enchant = new Enchant(GameTag.ATK, EffectOperator.SET, 1)
+				Enchant = new Enchant(Effects.SetAttack(1))
 			});
 
 			// --------------------------------------- MINION - PALADIN
@@ -1141,7 +1155,8 @@ namespace SabberStoneCore.CardSets.Standard
 			cards.Add("CS2_236", new Power {
 				PowerTask = ComplexTask.Create(
 					new GetGameTagTask(GameTag.HEALTH, EntityType.TARGET),
-					new MathSubstractionTask(GameTag.DAMAGE, EntityType.TARGET),
+					new GetGameTagTask(GameTag.DAMAGE, EntityType.TARGET, 0, 1),
+					new MathNumberIndexTask(0, 1, MathOperation.SUB),
 					new AddEnchantmentTask("CS2_236e", EntityType.TARGET, true))
 			});
 
@@ -1388,7 +1403,7 @@ namespace SabberStoneCore.CardSets.Standard
 			// - AURA = 1
 			// --------------------------------------------------------
 			cards.Add("EX1_565", new Power {
-				Aura = new Aura(AuraType.ADJACENT, "EX1_565o")
+				Aura = new AdjacentAura("EX1_565o")
 			});
 
 			// ---------------------------------------- MINION - SHAMAN
@@ -1537,7 +1552,7 @@ namespace SabberStoneCore.CardSets.Standard
 			// - TAUNT = 1
 			// --------------------------------------------------------
 			cards.Add("CS2_041e", new Power {
-				Enchant = new Enchant(Effects.Taunt)
+				Enchant = new Enchant(Effects.TauntEff)
 			});
 
 			// ----------------------------------- ENCHANTMENT - SHAMAN
@@ -1594,7 +1609,7 @@ namespace SabberStoneCore.CardSets.Standard
 			// Text: +2 Attack from Flametongue Totem.
 			// --------------------------------------------------------
 			cards.Add("EX1_565o", new Power {
-				Enchant = GetAutoEnchantFromText("EX1_244e")
+				Enchant = GetAutoEnchantFromText("EX1_565o")
 			});
 
 			// ---------------------------------------- MINION - SHAMAN
@@ -2429,7 +2444,7 @@ namespace SabberStoneCore.CardSets.Standard
 				Trigger = new Trigger(TriggerType.TAKE_DAMAGE)
 				{
 					TriggerSource = TriggerSource.SELF,
-					SingleTask = new AddEnchantmentTask(Cards.FromId("EX1_399e"), EntityType.SOURCE),
+					SingleTask = new AddEnchantmentTask("EX1_399e", EntityType.SOURCE),
 				}
 			});
 
@@ -2495,7 +2510,7 @@ namespace SabberStoneCore.CardSets.Standard
 			// --------------------------------------------------------
 			cards.Add("CS2_074e", new Power
 			{
-				Enchant = GetAutoEnchantFromText("CS2_074e")
+				Enchant = new Enchant(GameTag.ATK, EffectOperator.ADD, 2)
 			});
 
 			// ---------------------------------- ENCHANTMENT - NEUTRAL
@@ -2526,7 +2541,7 @@ namespace SabberStoneCore.CardSets.Standard
 			// Text: Increased stats.
 			// --------------------------------------------------------
 			cards.Add("CS2_226e", new Power {
-				Enchant = Enchants.Enchants.AddAttackHealthScriptTag
+				Enchant = AddAttackHealthScriptTag
 			});
 
 			// ---------------------------------- ENCHANTMENT - NEUTRAL

@@ -1,10 +1,21 @@
-﻿using SabberStoneCore.Enums;
+﻿#region copyright
+// SabberStone, Hearthstone Simulator in C# .NET Core
+// Copyright (C) 2017-2019 SabberStone Team, darkfriend77 & rnilva
+//
+// SabberStone is free software: you can redistribute it and/or modify
+// it under the terms of the GNU Affero General Public License as
+// published by the Free Software Foundation, either version 3 of the
+// License.
+// SabberStone is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU Affero General Public License for more details.
+#endregion
+using SabberStoneCore.Enums;
 using SabberStoneCore.Model;
 using SabberStoneCore.Model.Entities;
 using SabberStoneCore.Model.Zones;
-using SabberStoneCore.Visualizer;
 using System;
-using System.Collections.Generic;
 using System.Text;
 using System.Text.RegularExpressions;
 
@@ -114,7 +125,7 @@ namespace SabberStoneCore.Visualizer
 
 			string spacer = zone.Count == 10 ? new string(' ', 1) : new string(' ', 5 * (8 - zone.Count) + zone.Count + 1);
 
-			StringBuilder[] zoneStrArray = new StringBuilder[]
+			StringBuilder[] zoneStrArray = new[]
 			{
 				new StringBuilder("¦" + spacer),
 				new StringBuilder("¦" + spacer),
@@ -201,7 +212,7 @@ namespace SabberStoneCore.Visualizer
 				}
 			}
 
-			string[] backStrArray = new string[] { "", "", "", "", "", "" };
+			string[] backStrArray = new[] { "", "", "", "", "", "" };
 
 			char[][] zoneAscii = new CardAsciiBuilder().Create().ZoneCards(outzone.Count, outzone.Type).Build();
 			int y = turn ? 1 : 0;

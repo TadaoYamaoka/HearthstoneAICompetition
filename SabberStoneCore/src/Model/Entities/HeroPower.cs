@@ -1,4 +1,17 @@
-﻿using System.Collections.Generic;
+﻿#region copyright
+// SabberStone, Hearthstone Simulator in C# .NET Core
+// Copyright (C) 2017-2019 SabberStone Team, darkfriend77 & rnilva
+//
+// SabberStone is free software: you can redistribute it and/or modify
+// it under the terms of the GNU Affero General Public License as
+// published by the Free Software Foundation, either version 3 of the
+// License.
+// SabberStone is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU Affero General Public License for more details.
+#endregion
+using System.Collections.Generic;
 using SabberStoneCore.Enums;
 
 namespace SabberStoneCore.Model.Entities
@@ -6,15 +19,15 @@ namespace SabberStoneCore.Model.Entities
 	/// <summary>
 	/// Entity representing the special ability for a hero.
 	/// </summary>
-	/// <seealso cref="Playable{HeroPower}" />
-	public class HeroPower : Playable<HeroPower>
+	/// <seealso cref="Playable" />
+	public class HeroPower : Playable
 	{
 		/// <summary>Initializes a new instance of the <see cref="HeroPower"/> class.</summary>
 		/// <param name="controller">The controller.</param>
 		/// <param name="card">The card.</param>
 		/// <param name="tags">The tags.</param>
-		public HeroPower(Controller controller, Card card, IDictionary<GameTag, int> tags)
-			: base(controller, card, tags)
+		public HeroPower(in Controller controller, in Card card, in IDictionary<GameTag, int> tags, in int id = -1)
+			: base(in controller, in card, in tags, in id)
 		{
 			Game.Log(LogLevel.VERBOSE, BlockType.PLAY, "HeroPower", !Game.Logging? "":$"{this} ({ Card.Class}) was created.");
 		}
@@ -24,7 +37,7 @@ namespace SabberStoneCore.Model.Entities
 		/// </summary>
 		/// <param name="controller">The target <see cref="T:SabberStoneCore.Model.Entities.Controller" /> instance.</param>
 		/// <param name="heroPower">The source <see cref="T:SabberStoneCore.Model.Entities.HeroPower" />.</param>
-		private HeroPower(Controller controller, HeroPower heroPower) : base(controller, heroPower) { }
+		private HeroPower(in Controller controller, in Playable heroPower) : base(in controller, in heroPower) { }
 
 		/// <summary>Targetings the requirements.</summary>
 		/// <param name="target">The target.</param>
@@ -45,9 +58,9 @@ namespace SabberStoneCore.Model.Entities
 
 		public bool IsPassiveHeroPower => Card.HideStat;
 
-		public override IPlayable Clone(Controller controller)
+		public override IPlayable Clone(in Controller controller)
 		{
-			return new HeroPower(controller, this);
+			return new HeroPower(in controller, this);
 		}
 	}
 }

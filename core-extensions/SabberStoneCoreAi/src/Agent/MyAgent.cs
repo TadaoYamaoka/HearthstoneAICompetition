@@ -4,6 +4,8 @@ using System.Text;
 using SabberStoneCore.Tasks;
 using SabberStoneCoreAi.Agent;
 using SabberStoneCoreAi.POGame;
+using SabberStoneCore.Tasks.PlayerTasks;
+
 
 namespace SabberStoneCoreAi.src.Agent
 {

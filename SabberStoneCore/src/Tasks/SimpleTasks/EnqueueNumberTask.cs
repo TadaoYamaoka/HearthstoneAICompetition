@@ -1,55 +1,52 @@
-﻿using SabberStoneCore.Model.Entities;
+﻿using SabberStoneCore.Model;
+#region copyright
+// SabberStone, Hearthstone Simulator in C# .NET Core
+// Copyright (C) 2017-2019 SabberStone Team, darkfriend77 & rnilva
+//
+// SabberStone is free software: you can redistribute it and/or modify
+// it under the terms of the GNU Affero General Public License as
+// published by the Free Software Foundation, either version 3 of the
+// License.
+// SabberStone is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU Affero General Public License for more details.
+#endregion
+using SabberStoneCore.Model;
+using SabberStoneCore.Model.Entities;
 
 namespace SabberStoneCore.Tasks.SimpleTasks
 {
 	public class EnqueueNumberTask : SimpleTask
 	{
+		private readonly bool _spellDmg;
+		private readonly ISimpleTask _task;
+
 		public EnqueueNumberTask(ISimpleTask task, bool spellDmg = false)
 		{
-			Task = task;
-			SpellDmg = spellDmg;
+			_task = task;
+			_spellDmg = spellDmg;
 		}
 
-		public int Amount { get; set; }
-		public ISimpleTask Task { get; set; }
-		public bool SpellDmg { get; set; }
-
-		public override TaskState Process()
+		public override TaskState Process(in Game game, in Controller controller, in IEntity source, in IEntity target,
+			in TaskStack stack = null)
 		{
-			if (Number < 1)
-			{
-				return TaskState.STOP;
-			}
+			if (stack.Number < 1) return TaskState.STOP;
 
-			int times = SpellDmg ? Number + Controller.CurrentSpellPower : Number;
+			int times = _spellDmg ? stack.Number + controller.CurrentSpellPower : stack.Number;
 
 			for (int i = 0; i < times; i++)
-			{
-				// clone task here
-				ISimpleTask clone = Task.Clone();
-				clone.Game = Controller.Game;
-				clone.Controller = Controller;
-				clone.Source = Source as IPlayable;
-				clone.Target = Target as IPlayable;
+				game.TaskQueue.Enqueue(in _task, in controller, in source, in target);
+			//Controller.game.TaskQueue.EnqueueBase(
+			//	new ClearStackTask
+			//	{
+			//		Game = controller.Game,
+			//		Controller = in controller,
+			//		source = source as IPlayable,
+			//		target = target as IPlayable
+			//	});
 
-				Controller.Game.TaskQueue.Enqueue(clone);
-				//Controller.Game.TaskQueue.EnqueueBase(
-				//	new ClearStackTask
-				//	{
-				//		Game = Controller.Game,
-				//		Controller = Controller,
-				//		Source = Source as IPlayable,
-				//		Target = Target as IPlayable
-				//	});
-			}
 			return TaskState.COMPLETE;
-		}
-
-		public override ISimpleTask Clone()
-		{
-			var clone = new EnqueueNumberTask(Task.Clone(), SpellDmg);
-			clone.Copy(this);
-			return clone;
 		}
 	}
 }
