@@ -254,6 +254,10 @@ namespace SabberStoneCore.Model.Entities
 					{
 						enchantments.Add(p.Clone(controller));
 					}
+					for (int i = 0; i < originalEnchantments.Count; i++)
+					{
+						enchantments[i].setTarget(controller, originalEnchantments[i]);
+					} 
 					AppliedEnchantments = enchantments;
 				}
 			}
