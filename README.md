@@ -2,7 +2,7 @@
 <img src="docs/readme/HearthstoneAICompetition.png" alt="Competition logo" height="80%"/>
 </p>
 
-# HearthstoneAI Comeptition 2019
+# Hearthstone-AI Comeptition 2019
 
 Welcome to the 2019 Edition of the Hearthstone AI Competition. We are happy to annouce that this competition will be part of the IEEE Conference on Games [Link](http://ieee-cog.org/). More information including sourcecode of previous year's submissions can be found on the official competition homepage [Link](http://www.ci.ovgu.de/Research/HearthstoneAI.html).
 
@@ -66,7 +66,7 @@ SabberStone is licensed under the terms of the
 [Affero GPLv3](https://www.gnu.org/licenses/agpl-3.0.en.html) or any later version.
 
 ### Community
-SabberStone is being developed by darkfriend77 (darkfriend@swissonline.ch)
+SabberStone is being developed by darkfriend77 (darkfriend@swissonline.ch) and rnilva
 * SabberStone on [Discord](https://discord.gg/my9WTwK) .. come and talk with us!
 * SabberStone on [Reddit](https://redd.it/5p0ar8)
 * SabberStone is a [HearthSim](http://hearthsim.info) project!
