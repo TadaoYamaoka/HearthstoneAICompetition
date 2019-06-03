@@ -1,4 +1,4 @@
-#region copyright
+﻿#region copyright
 // SabberStone, Hearthstone Simulator in C# .NET Core
 // Copyright (C) 2017-2019 SabberStone Team, darkfriend77 & rnilva
 //
@@ -42,12 +42,12 @@ namespace SabberStoneCoreAi
 
 			Console.WriteLine("Setup POGameHandler");
 			AbstractAgent player1 = new GreedyAgent();
-			AbstractAgent player2 = new FaceHunter();
+			AbstractAgent player2 = new MyAgent();
 			var gameHandler = new POGameHandler(gameConfig, player1, player2, repeatDraws:false);
 
 			Console.WriteLine("Simulate Games");
 			//gameHandler.PlayGame();
-			gameHandler.PlayGames(nr_of_games:100, addResultToGameStats:true, debug:false);
+			gameHandler.PlayGames(nr_of_games:1, addResultToGameStats:true, debug:false);
 			GameStats gameStats = gameHandler.getGameStats();
 
 			gameStats.printResults();

@@ -7,7 +7,7 @@ using SabberStoneCoreAi.POGame;
 using SabberStoneCore.Tasks.PlayerTasks;
 
 
-namespace SabberStoneCoreAi.src.Agent
+namespace SabberStoneCoreAi.Agent
 {
 	class MyAgent : AbstractAgent
 	{
@@ -23,6 +23,19 @@ namespace SabberStoneCoreAi.src.Agent
 
 		public override PlayerTask GetMove(SabberStoneCoreAi.POGame.POGame poGame)
 		{
+			List<PlayerTask> simulatedactions = new List<PlayerTask>();
+			simulatedactions.AddRange(poGame.CurrentPlayer.Options());
+			Dictionary<PlayerTask, SabberStoneCoreAi.POGame.POGame> sim = poGame.Simulate(simulatedactions);
+
+			Dictionary<PlayerTask, SabberStoneCoreAi.POGame.POGame>.KeyCollection keyColl = sim.Keys;
+
+			foreach (PlayerTask key in keyColl)
+			{
+				//do something with simulated actions
+				//in case an EndTurn was simulated you need to set your own cards
+				//see POGame.prepareOpponent() for an example
+			}
+
 			return poGame.CurrentPlayer.Options()[0];
 		}
 
