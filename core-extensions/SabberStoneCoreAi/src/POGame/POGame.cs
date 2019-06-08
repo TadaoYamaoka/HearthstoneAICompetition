@@ -230,20 +230,11 @@ namespace SabberStoneCoreAi.POGame
 
 		/// <summary>
 		/// Gets or sets the controller delegating the current turn.
+		/// Thanks to Milva
 		/// </summary>
 		/// <value><see cref="Controller"/></value>
-		public Controller CurrentPlayer
-		{
-			get
-			{
-				//return Player1[GameTag.CURRENT_PLAYER] == 1
-				//	? Player1
-				//	: Player2[GameTag.CURRENT_PLAYER] == 1 ? Player2 : null;
-				return game.Player1.GetNativeGameTag(GameTag.CURRENT_PLAYER) == 1
-					? game.Player1
-					: game.Player2;
-			}
-		}
+		public Controller CurrentPlayer => game.CurrentPlayer;
+
 
 		/// <summary>
 		/// Gets the opponent controller of <see cref="CurrentPlayer"/>.
