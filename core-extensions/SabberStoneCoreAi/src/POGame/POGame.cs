@@ -128,9 +128,9 @@ namespace SabberStoneCoreAi.POGame
 			Dictionary<PlayerTask, POGame> simulated = new Dictionary<PlayerTask, POGame>();
 			foreach (PlayerTask task in tasksToSimulate)
 			{
-				Game clone = game.Clone();
 				try
 				{
+					Game clone = game.Clone();
 					clone.Process(task);
 					simulated.Add(task, new POGame(clone, this.debug));
 				}
