@@ -1,13 +1,7 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
+﻿using System.Collections.Generic;
 using SabberStoneCore.Config;
 using SabberStoneCore.Enums;
-using SabberStoneCoreAi.POGame;
-using SabberStoneCoreAi.Agent.ExampleAgents;
-using SabberStoneCoreAi.Agent;
 using SabberStoneCoreAi.Meta;
-using SabberStoneCoreAi.Competition.Agents;
 
 
 namespace SabberStoneCoreAi.Competition
