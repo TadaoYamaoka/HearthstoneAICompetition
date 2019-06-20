@@ -5,13 +5,17 @@ using System.Text;
 using SabberStoneCore.Tasks;
 using SabberStoneCoreAi.POGame;
 using SabberStoneCore.Tasks.PlayerTasks;
+using SabberStoneCore.Model;
+using SabberStoneCore.Enums;
 
 namespace SabberStoneCoreAi.Agent
 {
 	abstract class AbstractAgent
 
 	{
-		
+		public static List<Card> preferedDeck;
+		public static CardClass preferedHero;
+ 
 		public abstract void InitializeAgent();
 
 		public abstract void InitializeGame();

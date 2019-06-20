@@ -19,13 +19,16 @@ namespace SabberStoneCoreAi.POGame
 		private Game game;
 		private Game origGame;
 		private bool debug;
-			
-		public POGame(Game game, bool debug)
+		private bool hideCurrentPlayer;
+		private static int max_tries = 10;
+
+		public POGame(Game game, bool debug, bool hideCurrentPlayer = false)
 		{
 			this.origGame = game;
 			this.game = game.Clone();
 			game.Player1.Game = game;
 			game.Player2.Game = game;
+			this.hideCurrentPlayer = hideCurrentPlayer;
 			prepareOpponent();
 			this.debug = debug;
 
@@ -38,23 +41,28 @@ namespace SabberStoneCoreAi.POGame
 
 		private void prepareOpponent()
 		{
-			int nr_deck_cards = game.CurrentOpponent.DeckZone.Count;
-			int nr_hand_cards = game.CurrentOpponent.HandZone.Count;
+			Controller player = game.CurrentOpponent;
+			if (this.hideCurrentPlayer)
+			{
+				player = game.CurrentPlayer;
+			}
+			int nr_deck_cards = player.DeckZone.Count;
+			int nr_hand_cards = player.HandZone.Count;
 
-			game.CurrentOpponent.DeckCards = Decks.DebugDeck;
+			player.DeckCards = Decks.DebugDeck;
 
 			//DebugCardsGen.AddAll(game.CurrentOpponent.DeckCards);
-			game.CurrentOpponent.HandZone = new HandZone(game.CurrentOpponent);
-			game.CurrentOpponent.DeckZone = new DeckZone(game.CurrentOpponent);
+			player.HandZone = new HandZone(player);
+			player.DeckZone = new DeckZone(player);
 
 			for (int i = 0; i < nr_hand_cards; i++)
 			{
-				addCardToZone(game.CurrentOpponent.HandZone, game.CurrentOpponent.DeckCards[i], game.CurrentOpponent);
+				addCardToZone(player.HandZone, player.DeckCards[i], player);
 			}
 
 			for (int i = 0; i < nr_deck_cards; i++)
 			{
-				addCardToZone(game.CurrentOpponent.DeckZone, game.CurrentOpponent.DeckCards[nr_hand_cards+i], game.CurrentOpponent);
+				addCardToZone(player.DeckZone, player.DeckCards[nr_hand_cards+i], player);
 			}
 		}
 
@@ -128,16 +136,27 @@ namespace SabberStoneCoreAi.POGame
 			Dictionary<PlayerTask, POGame> simulated = new Dictionary<PlayerTask, POGame>();
 			foreach (PlayerTask task in tasksToSimulate)
 			{
-				try
+				bool success = false;
+				for (int tries = 0; tries < max_tries; tries++)
 				{
-					Game clone = origGame.Clone();
-					clone.Process(task);
-					simulated.Add(task, new POGame(clone, this.debug));
+					try
+					{
+						Game clone = origGame.Clone();
+						clone.Process(task);
+						if (task.PlayerTaskType == PlayerTaskType.END_TURN)
+							simulated.Add(task, new POGame(clone, this.debug, !this.hideCurrentPlayer));
+						else
+							simulated.Add(task, new POGame(clone, this.debug, this.hideCurrentPlayer));
+						success = true;
+						break;
+					}
+					catch (Exception)
+					{
+						
+					}
 				}
-				catch (Exception)
-				{
+				if (!success)
 					simulated.Add(task, null);
-				}
 			}
 			return simulated;
 
