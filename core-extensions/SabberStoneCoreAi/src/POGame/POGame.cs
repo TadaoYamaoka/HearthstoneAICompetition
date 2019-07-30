@@ -21,21 +21,24 @@ namespace SabberStoneCoreAi.POGame
 		private Game game;
 		private Game origGame;
 		private bool debug;
-			
-		public POGame(Game game, bool debug)
+		private bool hideCurrentPlayer;
+		private static int max_tries = 10;
+
+		public POGame(Game game, bool debug, bool hideCurrentPlayer = false)
 		{
 			this.origGame = game;
 			this.game = game.Clone();
 			game.Player1.Game = game;
 			game.Player2.Game = game;
+			this.hideCurrentPlayer = hideCurrentPlayer;
 			prepareOpponent();
 			this.debug = debug;
 
-			//if (debug)
-			//{
-			//	Console.WriteLine("Game Board");
-			//	Console.WriteLine(game.FullPrint());
-			//}
+			if (debug)
+			{
+				Console.WriteLine("Game Board");
+				Console.WriteLine(game.FullPrint());
+			}
 		}
 
 		private void prepareOpponent()
@@ -130,16 +133,27 @@ namespace SabberStoneCoreAi.POGame
 			Dictionary<PlayerTask, POGame> simulated = new Dictionary<PlayerTask, POGame>();
 			foreach (PlayerTask task in tasksToSimulate)
 			{
-				Game clone = game.Clone();
-				try
+				bool success = false;
+				for (int tries = 0; tries < max_tries; tries++)
 				{
-					clone.Process(task);
-					simulated.Add(task, new POGame(clone, this.debug));
+					try
+					{
+						Game clone = origGame.Clone();
+						clone.Process(task);
+						if (task.PlayerTaskType == PlayerTaskType.END_TURN)
+							simulated.Add(task, new POGame(clone, this.debug, !this.hideCurrentPlayer));
+						else
+							simulated.Add(task, new POGame(clone, this.debug, this.hideCurrentPlayer));
+						success = true;
+						break;
+					}
+					catch (Exception)
+					{
+						
+					}
 				}
-				catch (Exception)
-				{
+				if (!success)
 					simulated.Add(task, null);
-				}
 			}
 			return simulated;
 
@@ -232,9 +246,11 @@ namespace SabberStoneCoreAi.POGame
 
 		/// <summary>
 		/// Gets or sets the controller delegating the current turn.
+		/// Thanks to Milva
 		/// </summary>
 		/// <value><see cref="Controller"/></value>
 		public Controller CurrentPlayer => game.CurrentPlayer;
+
 
 		/// <summary>
 		/// Gets the opponent controller of <see cref="CurrentPlayer"/>.

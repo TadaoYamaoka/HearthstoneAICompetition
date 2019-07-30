@@ -31,6 +31,9 @@ namespace SabberStoneCoreAi.Agent
 
 			foreach (PlayerTask key in keyColl)
 			{
+				if (key.PlayerTaskType == PlayerTaskType.END_TURN)
+					Console.Write(sim[key].CurrentPlayer.DeckCards);
+
 				//do something with simulated actions
 				//in case an EndTurn was simulated you need to set your own cards
 				//see POGame.prepareOpponent() for an example
