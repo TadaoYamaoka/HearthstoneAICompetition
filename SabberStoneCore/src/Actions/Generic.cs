@@ -410,11 +410,8 @@ namespace SabberStoneCore.Actions
 					c.Game.IdEntityDic[p.Id] = entity;
 					p = entity;
 				}
-
 				if (newCard.ChooseOne)
 				{
-					if (p.ChooseOnePlayables == null)
-						p.ChooseOnePlayables = new IPlayable[2];
 
 					EntityData tags = null;
 					if (c.Game.History)
@@ -426,8 +423,25 @@ namespace SabberStoneCore.Actions
 						};
 					}
 
-					p.ChooseOnePlayables[0] = Entity.FromCard(c, Cards.FromId(newCard.Id + "a"), tags, c.SetasideZone);
-					p.ChooseOnePlayables[1] = Entity.FromCard(c, Cards.FromId(newCard.Id + "b"), tags, c.SetasideZone);
+					if (newCard.AssetId == 43310)
+					{
+						var chooseOnes = new IPlayable[4];
+						chooseOnes[0] = Entity.FromCard(in c, Cards.FromId("TRL_343at1"), tags, c.SetasideZone);
+						chooseOnes[1] = Entity.FromCard(in c, Cards.FromId("TRL_343ct1"), tags, c.SetasideZone);
+						chooseOnes[2] = Entity.FromCard(in c, Cards.FromId("TRL_343dt1"), tags, c.SetasideZone);
+						chooseOnes[3] = Entity.FromCard(in c, Cards.FromId("TRL_343bt1"), tags, c.SetasideZone);
+
+						p.ChooseOnePlayables = chooseOnes;
+					}
+					else
+					{
+						if (p.ChooseOnePlayables == null)
+							p.ChooseOnePlayables = new IPlayable[2];
+
+
+						p.ChooseOnePlayables[0] = Entity.FromCard(c, Cards.FromId(newCard.Id + "a"), tags, c.SetasideZone);
+						p.ChooseOnePlayables[1] = Entity.FromCard(c, Cards.FromId(newCard.Id + "b"), tags, c.SetasideZone);
+					}
 				}
 
 				switch (p.Zone.Type)

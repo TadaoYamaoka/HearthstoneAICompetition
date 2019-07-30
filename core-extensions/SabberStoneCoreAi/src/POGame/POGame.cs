@@ -16,6 +16,8 @@ namespace SabberStoneCoreAi.POGame
 {
 	partial class POGame
 	{
+		private static readonly Card PlaceHolder = Cards.FromId("LOEA04_31b");
+
 		private Game game;
 		private Game origGame;
 		private bool debug;
@@ -29,33 +31,33 @@ namespace SabberStoneCoreAi.POGame
 			prepareOpponent();
 			this.debug = debug;
 
-			if (debug)
-			{
-				Console.WriteLine("Game Board");
-				Console.WriteLine(game.FullPrint());
-			}
+			//if (debug)
+			//{
+			//	Console.WriteLine("Game Board");
+			//	Console.WriteLine(game.FullPrint());
+			//}
 		}
 
 		private void prepareOpponent()
 		{
-			int nr_deck_cards = game.CurrentOpponent.DeckZone.Count;
-			int nr_hand_cards = game.CurrentOpponent.HandZone.Count;
+			Controller op = game.CurrentOpponent;
+			Card placeHolder = PlaceHolder;
 
-			game.CurrentOpponent.DeckCards = Decks.DebugDeck;
+			op.DeckCards = Decks.DebugDeck;
 
-			//DebugCardsGen.AddAll(game.CurrentOpponent.DeckCards);
-			game.CurrentOpponent.HandZone = new HandZone(game.CurrentOpponent);
-			game.CurrentOpponent.DeckZone = new DeckZone(game.CurrentOpponent);
-
-			for (int i = 0; i < nr_hand_cards; i++)
+			var hand = op.HandZone;
+			var span = hand.GetSpan();
+			for (int i = span.Length - 1; i >= 0; --i)
 			{
-				addCardToZone(game.CurrentOpponent.HandZone, game.CurrentOpponent.DeckCards[i], game.CurrentOpponent);
+				hand.Remove(span[i]);
+				game.AuraUpdate();
+				hand.Add(Entity.FromCard(in op, in placeHolder));
 			}
 
-			for (int i = 0; i < nr_deck_cards; i++)
-			{
-				addCardToZone(game.CurrentOpponent.DeckZone, game.CurrentOpponent.DeckCards[nr_hand_cards+i], game.CurrentOpponent);
-			}
+			var deck = new DeckZone(op);
+			for (int i = 0; i < op.DeckZone.Count; i++)
+				deck.Add(Entity.FromCard(in op, in placeHolder));
+			op.DeckZone = deck;
 		}
 
 		private void addCardToZone(IZone zone, Card card, Controller player)
@@ -232,18 +234,7 @@ namespace SabberStoneCoreAi.POGame
 		/// Gets or sets the controller delegating the current turn.
 		/// </summary>
 		/// <value><see cref="Controller"/></value>
-		public Controller CurrentPlayer
-		{
-			get
-			{
-				//return Player1[GameTag.CURRENT_PLAYER] == 1
-				//	? Player1
-				//	: Player2[GameTag.CURRENT_PLAYER] == 1 ? Player2 : null;
-				return game.Player1.GetNativeGameTag(GameTag.CURRENT_PLAYER) == 1
-					? game.Player1
-					: game.Player2;
-			}
-		}
+		public Controller CurrentPlayer => game.CurrentPlayer;
 
 		/// <summary>
 		/// Gets the opponent controller of <see cref="CurrentPlayer"/>.

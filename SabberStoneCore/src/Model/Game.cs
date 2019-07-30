@@ -362,7 +362,7 @@ namespace SabberStoneCore.Model
 		private Game(Game game, bool logging = false) : base(null, game)
 		{
 			//IdEntityDic = new Dictionary<int, IPlayable>(game.IdEntityDic.Count);
-			IdEntityDic = new EntityList(game.IdEntityDic.Count);
+			IdEntityDic = new EntityList(game.IdEntityDic.Capacity);
 			Game = this;
 
 			Auras = new List<IAura>(game.Auras.Count);
