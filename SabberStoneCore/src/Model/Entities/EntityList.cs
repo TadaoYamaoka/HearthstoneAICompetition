@@ -32,7 +32,7 @@ namespace SabberStoneCore.Model.Entities
 				IPlayable[] list = _list;
 				if (id >= list.Length)
 				{
-					var newlist = new IPlayable[(int)(list.Length * 1.5)];
+					var newlist = new IPlayable[(int)(list.Length << 1)];
 					Array.Copy(list, newlist, list.Length);
 					list = newlist;
 					_list = newlist;
@@ -92,6 +92,8 @@ namespace SabberStoneCore.Model.Entities
 			value = _list[key];
 			return value != null;
 		}
+
+		internal int Capacity => _list.Length;
 
 		[DebuggerBrowsable(DebuggerBrowsableState.Never)]
 		public ICollection<int> Keys { get; }

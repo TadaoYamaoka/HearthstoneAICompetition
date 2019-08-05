@@ -16,6 +16,8 @@ namespace SabberStoneCoreAi.POGame
 {
 	partial class POGame
 	{
+		private static readonly Card PlaceHolder = Cards.FromId("LOEA04_31b");
+
 		private Game game;
 		private Game origGame;
 		private bool debug;
@@ -41,29 +43,24 @@ namespace SabberStoneCoreAi.POGame
 
 		private void prepareOpponent()
 		{
-			Controller player = game.CurrentOpponent;
-			if (this.hideCurrentPlayer)
+			Controller op = game.CurrentOpponent;
+			Card placeHolder = PlaceHolder;
+
+			op.DeckCards = Decks.DebugDeck;
+
+			var hand = op.HandZone;
+			var span = hand.GetSpan();
+			for (int i = span.Length - 1; i >= 0; --i)
 			{
-				player = game.CurrentPlayer;
-			}
-			int nr_deck_cards = player.DeckZone.Count;
-			int nr_hand_cards = player.HandZone.Count;
-
-			player.DeckCards = Decks.DebugDeck;
-
-			//DebugCardsGen.AddAll(game.CurrentOpponent.DeckCards);
-			player.HandZone = new HandZone(player);
-			player.DeckZone = new DeckZone(player);
-
-			for (int i = 0; i < nr_hand_cards; i++)
-			{
-				addCardToZone(player.HandZone, player.DeckCards[i], player);
+				hand.Remove(span[i]);
+				game.AuraUpdate();
+				hand.Add(Entity.FromCard(in op, in placeHolder));
 			}
 
-			for (int i = 0; i < nr_deck_cards; i++)
-			{
-				addCardToZone(player.DeckZone, player.DeckCards[nr_hand_cards+i], player);
-			}
+			var deck = new DeckZone(op);
+			for (int i = 0; i < op.DeckZone.Count; i++)
+				deck.Add(Entity.FromCard(in op, in placeHolder));
+			op.DeckZone = deck;
 		}
 
 		private void addCardToZone(IZone zone, Card card, Controller player)

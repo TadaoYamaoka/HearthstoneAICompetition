@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Diagnostics;
 using SabberStoneCore.Config;
 using SabberStoneCore.Enums;
@@ -49,15 +49,22 @@ namespace SabberStoneCoreAi.POGame
 			POGame poGame;
 			PlayerTask playertask = null;
 			Stopwatch[] watches = new[] {new Stopwatch(), new Stopwatch()};
-			
+			bool printGame = true;
+
 			game.StartGame();
-			
+			#if !DEBUG
 			try
 			{
+			#endif
 				while (game.State != State.COMPLETE && game.State != State.INVALID )
 				{
 					if (debug)
 						Console.WriteLine("Turn " + game.Turn);
+					if (printGame)
+					{
+						Console.WriteLine(MCGS.SabberHelper.SabberUtils.PrintGame(game));
+						printGame = false;
+					}
 
 					if  (game.Turn >= maxTurns)
 						break;
@@ -75,9 +82,16 @@ namespace SabberStoneCoreAi.POGame
 					game.CurrentOpponent.Game = game;
 
 					if (debug)
+					{
 						Console.WriteLine(playertask);
+					}
+
+					if (playertask.PlayerTaskType == PlayerTaskType.END_TURN)
+						printGame = true;
+
 					game.Process(playertask);
 				}
+			#if !DEBUG
 			}
 			catch (Exception e)
 			//Current Player loses if he throws an exception
@@ -91,6 +105,7 @@ namespace SabberStoneCoreAi.POGame
 				if (addToGameStats && game.State != State.INVALID)
 					gameStats.registerException(game, e);
 			}
+			#endif
 
 			if (game.State == State.INVALID || (game.Turn >= maxTurns && repeatDraws))
 				return false;
