@@ -1,5 +1,5 @@
 <p align="center">
-<img src="docs/readme/HearthstoneAICompetition.png" alt="Competition logo" height="80%"/>
+<img src="docs/readme/HearthstoneCompetition2020.png" alt="Competition logo" height="80%"/>
 </p>
 
 # Hearthstone-AI Competition 2020
