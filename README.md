@@ -53,7 +53,13 @@ As long as the number of subsmission remains below 32, we will use a round robin
 SabberStone is licensed under the terms of the
 [Affero GPLv3](https://www.gnu.org/licenses/agpl-3.0.en.html) or any later version.
 
-### Community
+### Legal
+
+This competition is not associated with Blizzard Entertainment. It is based on the Sabberstone framework which mimics the game Hearthstone and provides access points for the development of AI agents. The framework does not allow to play the original game nor does it connect to the game's servers in any way.
+
+Hearthstone and Blizzard Entertainment are trademarks or registered trademarks of Blizzard Entertainment, Inc. in the U.S. and/or other countries.
+
+### Sabberstone Community
 We would like to thank the developers of the Sabberstone Framework on which our competition is based on. Special thanks go out to darkfriend77 (darkfriend@swissonline.ch) and Milva for their constant effort in keeping the Sabberstone framework up-to-date. Without your work, this competition would not exist!
 
 Checkout the Sabberstone community:
