@@ -17,6 +17,7 @@ using System.Linq;
 using System.Text;
 using SabberStoneCore.Enums;
 using SabberStoneCore.Kettle;
+using SabberStoneCore.Tasks;
 
 namespace SabberStoneCore.Model.Entities
 {
@@ -263,7 +264,7 @@ namespace SabberStoneCore.Model.Entities
 		{
 			get
 			{
-				ReadOnlySpan<Minion> span = Controller.Opponent.BoardZone.GetSpan();
+				var span = Controller.Opponent.BoardZone.GetSpan();
 				for (int i = 0; i < span.Length; i++)
 				{
 					if (!(span[i].HasStealth || span[i].IsImmune))
@@ -337,6 +338,9 @@ namespace SabberStoneCore.Model.Entities
 				{
 					if (_history)
 						PreDamage = 0;
+
+					game.TaskQueue.EndEvent();
+					game.CurrentEventData = temp;
 					return 0;
 				}
 			}
@@ -370,6 +374,16 @@ namespace SabberStoneCore.Model.Entities
 			TakeDamageTrigger?.Invoke(this);
 			game.TriggerManager.OnDamageTrigger(this);
 			game.TriggerManager.OnDealDamageTrigger(source);
+
+			// Check if the source is Overkill
+			if (source.HasOverkill && source.Controller == game.CurrentPlayer && Health < 0)
+			{
+				game.Log(LogLevel.VERBOSE, BlockType.TRIGGER, "TakeDamage", !_logging ? "" : $"{source}' Overkill is triggered.");
+
+				ISimpleTask task = source is Hero h ? h.Weapon.Card.Power.OverkillTask : source.Card.Power.OverkillTask;
+				game.TaskQueue.Enqueue(task, source.Controller, source, null);
+			}
+
 			game.ProcessTasks();
 			game.TaskQueue.EndEvent();
 			game.CurrentEventData = temp;
@@ -390,6 +404,9 @@ namespace SabberStoneCore.Model.Entities
 
 			if (hero != null)
 				hero.DamageTakenThisTurn += amount;
+
+			if (source.Card.Type == CardType.HERO_POWER)
+				source.Controller.NumHeroPowerDamageThisGame += amount;
 
 			return amount;
 		}
@@ -528,9 +545,10 @@ namespace SabberStoneCore.Model.Entities
 		int NumAttacksThisTurn { get; set; }
 
 		/// <summary>
-		/// <see cref="Enums.Race"/>
+		/// Character is member of Race.
+		/// Characters of Race.ALL.  IE Amalgam.IsRace(Race.MULROC/Race.DRAGON/...) => true
 		/// </summary>
-		Race Race { get; }
+		bool IsRace(Race race);
 
 		///// <summary>
 		///// Character should exit combat.
@@ -704,8 +722,8 @@ namespace SabberStoneCore.Model.Entities
 				{
 					Game.PowerHistory.Add(PowerHistoryBuilder.TagChange(Id, GameTag.HEALTH, value));
 					_data[GameTag.HEALTH] = value;
-					Game.PowerHistory.Add(PowerHistoryBuilder.TagChange(Id, GameTag.DAMAGE, value));
-					_data[GameTag.DAMAGE] = value;
+					Game.PowerHistory.Add(PowerHistoryBuilder.TagChange(Id, GameTag.DAMAGE, 0));
+					_data[GameTag.DAMAGE] = 0;
 				}
 			}
 		}
@@ -867,7 +885,7 @@ namespace SabberStoneCore.Model.Entities
 			set => this[GameTag.PREDAMAGE] = value;
 		}
 
-		public Race Race => Card.Race;
+		public bool IsRace(Race race) => Card.IsRace(race);
 
 		public bool ShouldExitCombat
 		{

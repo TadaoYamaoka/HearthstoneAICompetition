@@ -78,7 +78,7 @@ namespace SabberStoneKettle
 					return false;
 
 				// convert the buffer to a string
-				String payload = System.Text.Encoding.UTF8.GetString(pbuffer);
+				string payload = System.Text.Encoding.UTF8.GetString(pbuffer);
 				Console.WriteLine("Read data:" + payload);
 
 				// make a json array from it
@@ -113,7 +113,7 @@ namespace SabberStoneKettle
 
 		private void HandlePacket(JArray jpacket)
 		{
-			String type = (String)jpacket[0]["Type"];
+			string type = (string)jpacket[0]["Type"];
 
 			if (type == "Concede")
 			{
@@ -180,7 +180,7 @@ namespace SabberStoneKettle
 				case KettleHistoryMetaData.KettleName:
 					var history = jpacket.AsEnumerable().Select(packet =>
 					{
-						string ptype = (String)packet["Type"];
+						string ptype = (string)packet["Type"];
 						switch (ptype)
 						{
 							case KettleHistoryBlockBegin.KettleName:
@@ -217,7 +217,7 @@ namespace SabberStoneKettle
 		private void SendPacket(JArray packet)
 		{
 			// Get the corresponding json string 
-			String data = Newtonsoft.Json.JsonConvert.SerializeObject(packet);
+			string data = Newtonsoft.Json.JsonConvert.SerializeObject(packet);
 
 			// first send the length of the data
 			Writer.Write(IPAddress.HostToNetworkOrder(data.Length));

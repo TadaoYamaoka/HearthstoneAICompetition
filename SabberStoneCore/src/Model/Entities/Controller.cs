@@ -19,7 +19,6 @@ using SabberStoneCore.Enchants;
 using SabberStoneCore.Enums;
 using SabberStoneCore.Kettle;
 using SabberStoneCore.Loader;
-using SabberStoneCore.Tasks;
 using SabberStoneCore.Tasks.PlayerTasks;
 using SabberStoneCore.Model.Zones;
 
@@ -34,7 +33,6 @@ namespace SabberStoneCore.Model.Entities
 		private readonly int _playerId;
 
 		/// <summary>
-
 		/// Available zones for this player.
 		/// </summary>
 		public ControlledZones ControlledZones;
@@ -94,12 +92,12 @@ namespace SabberStoneCore.Model.Entities
 		/// <summary>
 		/// Initial cards that are in the deck of the controller.
 		/// </summary>
-		public List<Card> DeckCards { get;  set; } = new List<Card>();
+		public List<Card> DeckCards { get; set; } = new List<Card>();
 
 		/// <summary>
 		/// Base class of the controller.
 		/// </summary>
-		public CardClass BaseClass { get;  internal set; }
+		public CardClass BaseClass { get; internal set; }
 
 
 		/// <summary>
@@ -132,7 +130,7 @@ namespace SabberStoneCore.Model.Entities
 		/// <summary>
 		/// Returns true if this player has a dragon in his hand.
 		/// </summary>
-		public bool DragonInHand => HandZone.Any(p => p.Card.Race == Race.DRAGON);
+		public bool DragonInHand => HandZone.Any(p => p.Card.IsRace(Race.DRAGON));
 
 		public int NumTotemSummonedThisGame { get; set; }
 
@@ -191,7 +189,7 @@ namespace SabberStoneCore.Model.Entities
 
 			ControlledZones = new ControlledZones(this);
 
-			ControllerAuraEffects = new ControllerAuraEffects();
+			ControllerAuraEffects = new ControllerAuraEffects(in game, this);
 
 			DiscardedEntities = new List<int>();
 			CardsPlayedThisTurn = new List<Card>(10);
@@ -221,11 +219,7 @@ namespace SabberStoneCore.Model.Entities
 				Hero.Weapon = (Weapon)controller.Hero.Weapon.Clone(this);
 			}
 
-			if (controller.Choice != null)
-			{
-				Choice = new Choice(this);
-				Choice.Stamp(controller.Choice);
-			}
+			Choice = controller.Choice?.Clone(this);
 
 			BoardZone = new BoardZone(this);
 			SetasideZone = controller.SetasideZone.Clone(this);
@@ -239,7 +233,7 @@ namespace SabberStoneCore.Model.Entities
 			BaseClass = controller.BaseClass;
 
 			ControlledZones = new ControlledZones(this);
-			ControllerAuraEffects = controller.ControllerAuraEffects.Clone();
+			ControllerAuraEffects = controller.ControllerAuraEffects.Clone(this);
 
 			PlayHistory = new List<PlayHistoryEntry>(controller.PlayHistory);
 			DiscardedEntities = new List<int>(controller.DiscardedEntities);
@@ -261,7 +255,6 @@ namespace SabberStoneCore.Model.Entities
 
 			// non-tag attributes
 			_playerId = controller._playerId;
-			_currentSpellPower = controller._currentSpellPower;
 			NumTotemSummonedThisGame = controller.NumTotemSummonedThisGame;
 			TemporusFlag = controller.TemporusFlag;
 		}
@@ -384,7 +377,7 @@ namespace SabberStoneCore.Model.Entities
 			Character[] allFriendly = null;
 			Character[] allEnemies = null;
 
-			ReadOnlySpan<IPlayable> handSpan = HandZone.GetSpan();
+			var handSpan = HandZone.GetSpan();
 			for (int i = 0; i < handSpan.Length; i++)
 			{
 				if (!handSpan[i].ChooseOne || ChooseBoth)
@@ -432,7 +425,7 @@ namespace SabberStoneCore.Model.Entities
 			#region MinionAttackTasks
 			Minion[] attackTargets = null;
 			bool isOpHeroValidAttackTarget = false;
-			ReadOnlySpan<Minion> boardSpan = BoardZone.GetSpan();
+			var boardSpan = BoardZone.GetSpan();
 			for (int j = 0; j < boardSpan.Length; j++)
 			{
 				Minion minion = boardSpan[j];
@@ -455,7 +448,8 @@ namespace SabberStoneCore.Model.Entities
 			#region HeroAttackTaskts
 			Hero hero = Hero;
 
-			if (!hero.IsExhausted && hero.AttackDamage > 0 && !hero.IsFrozen)
+			if ((!hero.IsExhausted || (hero.ExtraAttacksThisTurn > 0 && hero.ExtraAttacksThisTurn >= hero.NumAttacksThisTurn))
+			    && hero.AttackDamage > 0 && !hero.IsFrozen)
 			{
 				GenerateAttackTargets();
 
@@ -556,7 +550,7 @@ namespace SabberStoneCore.Model.Entities
 			Character[] GetTargets(Card card)
 			{
 				// Check it needs additional validation
-				if (!card.TargetingAvailabilityPredicate?.Invoke(this) ?? false)
+				if (!card.TargetingAvailabilityPredicate?.Invoke(this, card) ?? false)
 					return null;
 
 				Character[] targets;
@@ -650,7 +644,7 @@ namespace SabberStoneCore.Model.Entities
 					}
 					else
 					{
-						if (!card.TargetingAvailabilityPredicate?.Invoke(this) ?? false)
+						if (!card.TargetingAvailabilityPredicate?.Invoke(this, card) ?? false)
 							return null;
 
 						Character[] buffer = new Character[targets.Length];
@@ -768,12 +762,12 @@ namespace SabberStoneCore.Model.Entities
 		/// <summary>
 		/// Maximum amount of cards in the player's hand
 		/// </summary>
-		public int MaxHandSize => this[GameTag.MAXHANDSIZE];
+		public const int MaxHandSize = 10;
 
 		/// <summary>
 		/// Maximum amount of mana this player is allowed to spend.
 		/// </summary>
-		public int MaxResources => this[GameTag.MAXRESOURCES];
+		public const int MaxResources = 10;
 
 		/// <summary>
 		/// Duration of seconds of this player's turn.
@@ -1192,8 +1186,9 @@ namespace SabberStoneCore.Model.Entities
 		/// </summary>
 		public bool ExtraBattlecry
 		{
-			get => ControllerAuraEffects[GameTag.EXTRA_BATTLECRIES_BASE] > 0;
-			set => ControllerAuraEffects[GameTag.EXTRA_BATTLECRIES_BASE] += 1;
+			get => ControllerAuraEffects[GameTag.EXTRA_BATTLECRIES_BASE] > 0 ||
+			       ControllerAuraEffects[GameTag.EXTRA_MINION_BATTLECRIES_BASE] == 1;
+			set => ControllerAuraEffects[GameTag.EXTRA_BATTLECRIES_BASE] = value ? 1 : 0;
 		}
 
 		/// <summary>
@@ -1231,16 +1226,24 @@ namespace SabberStoneCore.Model.Entities
 		/// </summary>
 		public int CurrentSpellPower
 		{
-			get => _currentSpellPower;
-			set
-			{
-				_currentSpellPower = value;
-				if (Game.History)
-					this[GameTag.CURRENT_SPELLPOWER] = value;
-			}
+			get => BoardZone.Sum(m => m.SpellPower)
+				+ (Hero.NativeTags.ContainsKey(GameTag.SPELLPOWER) ? Hero.NativeTags[GameTag.SPELLPOWER] : 0)
+				+ (NativeTags.ContainsKey(GameTag.SPELLPOWER) ? NativeTags [GameTag.SPELLPOWER] : 0)
+				+ ControllerAuraEffects[GameTag.SPELLPOWER];
 		}
 
-		private int _currentSpellPower;
+		public int AmountHealedThisGame
+		{
+			get => this[GameTag.AMOUNT_HEALED_THIS_GAME];
+			set => this[GameTag.AMOUNT_HEALED_THIS_GAME] = value;
+		}
+
+		public int NumHeroPowerDamageThisGame
+		{
+			get => this[GameTag.NUM_HERO_POWER_DAMAGE_THIS_GAME];
+			set => this[GameTag.NUM_HERO_POWER_DAMAGE_THIS_GAME] = value;
+		}
+
 		private Controller _opponent;
 	}
 }

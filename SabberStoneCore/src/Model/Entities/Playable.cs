@@ -19,6 +19,7 @@ using SabberStoneCore.Auras;
 using SabberStoneCore.Enums;
 using SabberStoneCore.Enchants;
 using SabberStoneCore.Tasks;
+using SabberStoneCore.Triggers;
 
 namespace SabberStoneCore.Model.Entities
 {
@@ -123,6 +124,11 @@ namespace SabberStoneCore.Model.Entities
 		/// Playable has Echo ability.
 		/// </summary>
 		bool IsEcho { get; }
+
+		/// <summary>
+		/// Playable has Overkill ability.
+		/// </summary>
+		bool HasOverkill { get; }
 
 		/// <summary>
 		/// Gets or sets a value indicating whether the target must be an option from the
@@ -254,10 +260,6 @@ namespace SabberStoneCore.Model.Entities
 					{
 						enchantments.Add(p.Clone(controller));
 					}
-					for (int i = 0; i < originalEnchantments.Count; i++)
-					{
-						enchantments[i].setTarget(controller, originalEnchantments[i]);
-					} 
 					AppliedEnchantments = enchantments;
 				}
 			}
@@ -692,6 +694,8 @@ namespace SabberStoneCore.Model.Entities
 				return Card.Echo;
 			}
 		}
+
+		public virtual bool HasOverkill => Card.Overkill;
 	}
 #pragma warning restore CS1591 // Missing XML comment for publicly visible type or member
 }

@@ -48,7 +48,8 @@ namespace SabberStoneCore.Tasks.SimpleTasks
 			_amount = amount;
 		}
 
-		public override TaskState Process(in Game game, in Controller controller, in IEntity source, in IEntity target,
+		public override TaskState Process(in Game game, in Controller controller, in IEntity source,
+			in IPlayable target,
 			in TaskStack stack = null)
 		{
 			//[irc] Patashu @darkfriend77 yeah, that's the general idea. 
@@ -84,8 +85,8 @@ namespace SabberStoneCore.Tasks.SimpleTasks
 					{
 						foreach (IPlayable p in entities)
 						{
-							Generic.AddEnchantmentBlock.Invoke(controller, BuffEnchantmentCard, (IPlayable) source, p,
-								0, 0, false);
+							Generic.AddEnchantmentBlock(game, BuffEnchantmentCard, (IPlayable) source, p,
+								0, 0, 0);
 
 							((OngoingEnchant) p.OngoingEffect).Count += _amount - 1;
 						}
@@ -96,8 +97,8 @@ namespace SabberStoneCore.Tasks.SimpleTasks
 					foreach (IPlayable p in entities)
 						if (p.OngoingEffect == null)
 						{
-							Generic.AddEnchantmentBlock.Invoke(controller, BuffEnchantmentCard, (IPlayable) source, p,
-								0, 0, false);
+							Generic.AddEnchantmentBlock(game, BuffEnchantmentCard, (IPlayable) source, p,
+								0, 0, 0);
 							((OngoingEnchant) p.OngoingEffect).Count += _amount - 1;
 						}
 						else
@@ -110,16 +111,16 @@ namespace SabberStoneCore.Tasks.SimpleTasks
 				case RitualType.Taunt:
 					if (proxyCthun[GameTag.TAUNT] == 1) break;
 					foreach (IPlayable p in entities)
-						Generic.AddEnchantmentBlock.Invoke(controller, TauntEnchantmentCard, (IPlayable) source, p, 0,
-							0, false);
+						Generic.AddEnchantmentBlock(game, TauntEnchantmentCard, (IPlayable) source, p, 0,
+							0, 0);
 
 					break;
 
 				case RitualType.Blade:
 					foreach (IPlayable p in entities)
-						Generic.AddEnchantmentBlock.Invoke(controller, BladeofCThunEnchantmentCard, (IPlayable) source,
+						Generic.AddEnchantmentBlock(game, BladeofCThunEnchantmentCard, (IPlayable) source,
 							p, stack.Number,
-							stack.Number1, false);
+							stack.Number1, 0);
 
 					break;
 			}

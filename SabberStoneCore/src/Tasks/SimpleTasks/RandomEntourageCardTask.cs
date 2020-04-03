@@ -29,7 +29,8 @@ namespace SabberStoneCore.Tasks.SimpleTasks
 			_opponent = opponent;
 		}
 
-		public override TaskState Process(in Game game, in Controller controller, in IEntity source, in IEntity target,
+		public override TaskState Process(in Game game, in Controller controller, in IEntity source,
+			in IPlayable target,
 			in TaskStack stack = null)
 		{
 			var playable = source as IPlayable;
@@ -44,7 +45,8 @@ namespace SabberStoneCore.Tasks.SimpleTasks
 				int i = 0;
 				do
 				{
-					string pick = Util.Choose(playable.Card.Entourage);
+					//string pick = Util.Choose(playable.Card.Entourage);
+					string pick = playable.Card.Entourage.Choose(game.Random);
 					if (Array.IndexOf(ids, pick) > -1)
 						continue;
 					ids[i] = pick;
@@ -60,7 +62,7 @@ namespace SabberStoneCore.Tasks.SimpleTasks
 			else
 			{
 				IPlayable randomCard = Entity.FromCard(_opponent ? controller.Opponent : controller,
-					Cards.FromId(Util.Choose(playable.Card.Entourage)));
+					Cards.FromId(playable.Card.Entourage.Choose(game.Random)));
 				stack.Playables = new List<IPlayable> {randomCard};
 			}
 

@@ -86,7 +86,7 @@ namespace SabberStoneCore.Model.Entities
 	/// <summary>
 	/// The base class of all data-holding/action-performing/visible or invisible objects in a SabberStone game.
 	/// An entity is defined as a collection of properties, called Tags.
-	/// 
+	///
 	/// <seealso cref="HeroPower"/>
 	/// <seealso cref="Hero"/>
 	/// <seealso cref="Minion"/>
@@ -96,7 +96,7 @@ namespace SabberStoneCore.Model.Entities
 	public partial class Entity : IEntity
 	{
 		/// <summary>
-		/// This object holds the original tag values, defined through the constructor 
+		/// This object holds the original tag values, defined through the constructor
 		/// of this instance.
 		/// These tags are usefull when values are needed without any buffs/debuffs applied.
 		/// </summary>
@@ -245,14 +245,21 @@ namespace SabberStoneCore.Model.Entities
 		/// <param name="zone">The zone in which the entity must spawn.</param>
 		/// <param name="id">The EntityID to assign to the newly created entity.</param>
 		/// <param name="zonePos">The position to be placed when the entity is summoned to Board.</param>
+		/// <param name="creator">The creator entity of the new entity.</param>
 		/// <returns></returns>
 		/// <exception cref="EntityException"></exception>
-		public static IPlayable FromCard(in Controller controller, in Card card, IDictionary<GameTag, int> tags = null, in IZone zone = null, in int id = -1, in int zonePos = -1)
+		public static IPlayable FromCard(in Controller controller, in Card card,
+			IDictionary<GameTag, int> tags = null,
+			in IZone zone = null, in int id = -1, in int zonePos = -1,
+			in IEntity creator = null)
 		{
 			Game game = controller.Game;
 
 			tags = tags ?? new EntityData();
 			//tags[GameTag.CARD_ID] = card.AssetId;
+
+			//if (creator != null)
+			//	tags.Add(GameTag.CREATOR, creator.Id);
 
 			IPlayable result;
 			switch (card.Type)
@@ -306,9 +313,12 @@ namespace SabberStoneCore.Model.Entities
 			// add entity to the game dic
 			game.IdEntityDic[result.Id] = result;
 
-			// add power history full entity 
+			// add power history full entity
 			if (game.History)
 			{
+				if (zone != null)
+					tags[GameTag.ZONE] = (int)zone.Type;
+
 				if (zone is DeckZone)
 				{
 					controller.Game.PowerHistory.Add(new PowerHistoryFullEntity
@@ -317,7 +327,7 @@ namespace SabberStoneCore.Model.Entities
 						{
 							Id = result.Id,
 							Name = "",
-							Tags = new Dictionary<GameTag, int>(tags)
+							Tags = new EntityData(tags)
 						}
 					});
 				}
@@ -325,13 +335,20 @@ namespace SabberStoneCore.Model.Entities
 					controller.Game.PowerHistory.Add(PowerHistoryBuilder.FullEntity(result));
 			}
 
-			// add entity to the appropriate zone if it was given
-			if (zone is BoardZone)
-				Generic.SummonBlock.Invoke(game, (Minion)result, zonePos);
-			else if (zone is HandZone)
-				Generic.AddHandPhase.Invoke(controller, result);
-			else
-				zone?.Add(result, zonePos);
+			if (zone != null) // add entity to the appropriate zone if it was given
+				switch (zone.Type)
+				{
+
+					case Enums.Zone.PLAY:
+						Generic.SummonBlock.Invoke(game, (Minion) result, zonePos, creator);
+						break;
+					case Enums.Zone.HAND:
+						Generic.AddHandPhase.Invoke(controller, result);
+						break;
+					default:
+						zone?.Add(result, zonePos);
+						break;
+				}
 
 			if (result.ChooseOne)
 			{
@@ -412,8 +429,8 @@ namespace SabberStoneCore.Model.Entities
 
 	public partial class Entity
 	{
-		protected readonly bool _history;
-		protected readonly bool _logging;
+		protected bool _history;
+		protected bool _logging;
 
 #pragma warning disable CS1591 // Missing XML comment for publicly visible type or member
 		public int Id { get; }

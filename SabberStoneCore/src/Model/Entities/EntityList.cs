@@ -32,10 +32,14 @@ namespace SabberStoneCore.Model.Entities
 				IPlayable[] list = _list;
 				if (id >= list.Length)
 				{
-					var newlist = new IPlayable[(int)(list.Length << 1)];
-					Array.Copy(list, newlist, list.Length);
-					list = newlist;
-					_list = newlist;
+					int newLength = list.Length << 1;
+					while (id >= newLength)
+						newLength <<= 1;
+
+					var newList = new IPlayable[(int)newLength];
+					Array.Copy(list, newList, list.Length);
+					list = newList;
+					_list = newList;
 				}
 
 				if (list[id] == null)
@@ -55,7 +59,7 @@ namespace SabberStoneCore.Model.Entities
 			IPlayable[] list = _list;
 			if (list.Length <= key)
 			{
-				var newlist = new IPlayable[list.Length * 2];
+				var newlist = new IPlayable[list.Length << 1];
 				Array.Copy(list, newlist, list.Length);
 				list = newlist;
 				_list = newlist;
@@ -75,9 +79,7 @@ namespace SabberStoneCore.Model.Entities
 		#region IDictionary
 		public bool ContainsKey(int key)
 		{
-			if (_list == null || key >= _list.Length)
-				return false;
-			return _list[key] != null;
+			return _list.Length > key && _list[key] != null;
 		}
 
 		public bool Remove(int key)
@@ -92,8 +94,6 @@ namespace SabberStoneCore.Model.Entities
 			value = _list[key];
 			return value != null;
 		}
-
-		internal int Capacity => _list.Length;
 
 		[DebuggerBrowsable(DebuggerBrowsableState.Never)]
 		public ICollection<int> Keys { get; }

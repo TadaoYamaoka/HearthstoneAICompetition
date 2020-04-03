@@ -2944,12 +2944,17 @@ namespace SabberStoneCoreTest.CardSets.Standard
 			//var testCard = Generic.DrawCard(game.CurrentPlayer, Cards.FromName("Ratcatcher"));
 			//game.Process(PlayCardTask.Any(game.CurrentPlayer, "Ratcatcher"));
 
+			IPlayable target2 = game.ProcessCard("Summoning Portal");
 			IPlayable target = game.ProcessCard("Chillwind Yeti");
 			Minion test = game.ProcessCard<Minion>("Ratcatcher", target);
+			Minion test2 = game.ProcessCard<Minion>("Ratcatcher", target2);
 
 			Assert.Equal(6, test.AttackDamage);
 			Assert.Equal(7, test.Health);
 			Assert.True(target.ToBeDestroyed);
+
+			Assert.Equal(2, test2.AttackDamage);
+			Assert.Equal(6, test2.Health);
 		}
 
 		// --------------------------------------- MINION - WARLOCK
@@ -3921,19 +3926,29 @@ namespace SabberStoneCoreTest.CardSets.Standard
 		// - ELITE = 1
 		// - BATTLECRY = 1
 		// --------------------------------------------------------
-		[Fact(Skip = "ignore")]
+		[Fact]
 		public void AzalinaSoulthief_GIL_198()
-		{
-			// TODO AzalinaSoulthief_GIL_198 test
+		{ 
 			var game = new Game(new GameConfig
 			{
 				StartPlayer = 1,
 				Player1HeroClass = CardClass.MAGE,
 				Player1Deck = new List<Card>()
 				{
-					Cards.FromName("Azalina Soulthief"),
+					Cards.FromName("Bloodfen Raptor"),
+					Cards.FromName("Bloodfen Raptor"),
+					Cards.FromName("Bloodfen Raptor"),
+					Cards.FromName("Bloodfen Raptor"),
 				},
 				Player2HeroClass = CardClass.MAGE,
+				Player2Deck = new List<Card>()
+				{
+					Cards.FromName("Azalina Soulthief"),
+					Cards.FromName("Wisp"),
+					Cards.FromName("Wisp"),
+					Cards.FromName("Wisp"),
+					Cards.FromName("Wisp"),
+				},
 				Shuffle = false,
 				FillDecks = true,
 				FillDecksPredictably = true
@@ -3941,8 +3956,12 @@ namespace SabberStoneCoreTest.CardSets.Standard
 			game.StartGame();
 			game.Player1.BaseMana = 10;
 			game.Player2.BaseMana = 10;
-			//var testCard = Generic.DrawCard(game.CurrentPlayer, Cards.FromName("Azalina Soulthief"));
-			//game.Process(PlayCardTask.Any(game.CurrentPlayer, "Azalina Soulthief"));
+
+			game.EndTurn();
+
+			game.Process(PlayCardTask.Any(game.CurrentPlayer, "Azalina Soulthief"));
+			Assert.Equal(4, game.CurrentPlayer.HandZone.Count);
+			Assert.True(game.CurrentPlayer.HandZone.ToList().TrueForAll(p => p.Card.Name == "Bloodfen Raptor"));
 		}
 
 		// --------------------------------------- MINION - NEUTRAL
@@ -4591,6 +4610,33 @@ namespace SabberStoneCoreTest.CardSets.Standard
 			test.Kill();
 
 			Assert.True(target.ToBeDestroyed);
+
+			// https://playhearthstone.com/en-us/blog/21965466/
+			// The impact on Voodoo Doll is a little different with the update.
+			// If you transform the minion that’s already been cursed by Voodoo Doll,
+			// the curse will be broken, and the transformed (and formerly cursed) minion
+			// will not be killed when Voodoo Doll dies.
+			// Silencing the cursed minion will also break the curse,
+			// in addition to silencing the Voodoo Doll.
+			test = game.ProcessCard<Minion>("Wisp");
+
+			Minion silenceTest = game.ProcessCard<Minion>("Voodoo Doll", test, asZeroCost: true);
+			test.Silence();
+			silenceTest.Kill();
+			Assert.False(test.ToBeDestroyed);
+
+			Minion transformTest = game.ProcessCard<Minion>("Voodoo Doll", test, asZeroCost: true);
+			game.ProcessCard<Minion>("Master of Evolution", test, asZeroCost: true);
+			transformTest.Kill();
+			test = (Minion) game.IdEntityDic[test.Id];
+			Assert.False(test.ToBeDestroyed);
+
+			Minion returnToHandTest = game.ProcessCard<Minion>("Voodoo Doll", test, asZeroCost: true);
+			game.ProcessCard("Shadowstep", test);
+			Assert.Equal(Zone.HAND, test.Zone.Type);
+			game.ProcessCard(test);
+			returnToHandTest.Kill();
+			Assert.False(test.ToBeDestroyed);
 		}
 
 		// --------------------------------------- MINION - NEUTRAL
@@ -4908,7 +4954,7 @@ namespace SabberStoneCoreTest.CardSets.Standard
 		//       Demon, Murloc, Dragon,
 		//       Beast, Pirate and Totem.</i>
 		// --------------------------------------------------------
-		[Fact(Skip = "ignore")]
+		[Fact]
 		public void NightmareAmalgam_GIL_681()
 		{
 			// TODO NightmareAmalgam_GIL_681 test
@@ -4918,18 +4964,80 @@ namespace SabberStoneCoreTest.CardSets.Standard
 				Player1HeroClass = CardClass.MAGE,
 				Player1Deck = new List<Card>()
 				{
-					Cards.FromName("Nightmare Amalgam"),
 				},
 				Player2HeroClass = CardClass.MAGE,
 				Shuffle = false,
-				FillDecks = true,
-				FillDecksPredictably = true
+				FillDecks = false
 			});
 			game.StartGame();
 			game.Player1.BaseMana = 10;
 			game.Player2.BaseMana = 10;
-			//var testCard = Generic.DrawCard(game.CurrentPlayer, Cards.FromName("Nightmare Amalgam"));
-			//game.Process(PlayCardTask.Any(game.CurrentPlayer, "Nightmare Amalgam"));
+			Minion testCard = game.ProcessCard<Minion>("Nightmare Amalgam");
+			Assert.Equal(3, testCard.AttackDamage);
+
+			Minion timberWolf = game.ProcessCard<Minion>("Timber Wolf");
+			Assert.Equal(4, testCard.AttackDamage);
+
+			game.ProcessCard<Minion>("Southsea Captain");
+			Assert.Equal(5, testCard.AttackDamage);
+			Assert.Equal(5, testCard.Health);
+
+			game.ProcessCard<Spell>("Totemic Might");
+			Assert.Equal(7, testCard.Health);
+
+			game.ProcessCard<Spell>("Earthen Might", testCard);
+			Assert.Single(game.CurrentPlayer.HandZone);
+			IPlayable card = game.CurrentPlayer.HandZone[0];
+			Assert.True(card.Card.IsRace(Race.ELEMENTAL));
+			Assert.Equal(7, testCard.AttackDamage);
+			Assert.Equal(9, testCard.Health);
+
+			game.ProcessCard<Spell>("Counterfeit Coin");
+			game.ProcessCard<Spell>("Counterfeit Coin");
+			game.ProcessCard<Spell>("Counterfeit Coin");
+			game.ProcessCard<Spell>("Counterfeit Coin");
+			game.ProcessCard<Spell>("Counterfeit Coin");
+			game.ProcessCard<Minion>("E.M.P. Operative", testCard);
+			Assert.True(testCard.IsDead);
+		}
+
+		// --------------------------------------- MINION - NEUTRAL
+		// [GIL_681] Nightmare Amalgam - COST:3 [ATK:3/HP:4] 
+		// - Race: all, Set: gilneas, Rarity: epic
+		// --------------------------------------------------------
+		// Text: [x]<i>This is an Elemental, Mech,
+		//       Demon, Murloc, Dragon,
+		//       Beast, Pirate and Totem.</i>
+		// --------------------------------------------------------
+		[Fact]
+		public void NightmareAmalgam_GIL_681_moretests()
+		{
+			// TODO NightmareAmalgam_GIL_681 test
+			var game = new Game(new GameConfig
+			{
+				StartPlayer = 1,
+				Player1HeroClass = CardClass.MAGE,
+				Player1Deck = new List<Card>()
+				{
+				},
+				Player2HeroClass = CardClass.MAGE,
+				Shuffle = false,
+				FillDecks = false
+			});
+			game.StartGame();
+			game.Player1.BaseMana = 10;
+			game.Player2.BaseMana = 10;
+
+			// Test Skycap'n Kragg mana cost is reduced by Amalgam in field
+			var skycapn = Generic.DrawCard(game.CurrentPlayer, Cards.FromName("Skycap'n Kragg"));
+			Minion testCard = game.ProcessCard<Minion>("Nightmare Amalgam");
+			Assert.Equal(6, skycapn.Cost);
+
+			// test magnetic
+			game.ProcessCard<Minion>("Skaterbot", zonePosition:0);  // 1/1 magnetic rush
+			Assert.Equal(4, testCard.AttackDamage);
+			Assert.Equal(5, testCard.Health);
+			Assert.True(testCard.IsRush);
 		}
 
 		// --------------------------------------- MINION - NEUTRAL

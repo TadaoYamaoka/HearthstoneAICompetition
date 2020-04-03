@@ -45,7 +45,8 @@ namespace SabberStoneCore.Tasks.SimpleTasks
 
 		public bool SpellDmg { get; set; }
 
-		public override TaskState Process(in Game game, in Controller controller, in IEntity source, in IEntity target,
+		public override TaskState Process(in Game game, in Controller controller, in IEntity source,
+			in IPlayable target,
 			in TaskStack stack = null)
 		{
 			if (Amount < 1 && RandAmount < 1)
@@ -58,7 +59,7 @@ namespace SabberStoneCore.Tasks.SimpleTasks
 				int randAmount = 0;
 				if (RandAmount > 0)
 				{
-					randAmount = Random.Next(0, RandAmount + 1);
+					randAmount = game.Random.Next(0, RandAmount + 1);
 					game.OnRandomHappened(true);
 				}
 

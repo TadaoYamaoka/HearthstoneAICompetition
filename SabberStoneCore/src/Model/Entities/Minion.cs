@@ -71,12 +71,7 @@ namespace SabberStoneCore.Model.Entities
 			IsImmune = false;
 			AttackableByRush = false;
 
-			int sp = this[GameTag.SPELLPOWER];
-			if (sp > 0)
-			{
-				Controller.CurrentSpellPower -= sp;
-				this[GameTag.SPELLPOWER] = 0;
-			}
+			this[GameTag.SPELLPOWER] = 0;
 
 			// remove enchantments, aura and trigger
 			OngoingEffect?.Remove();
@@ -221,6 +216,18 @@ namespace SabberStoneCore.Model.Entities
 		{
 			return new Minion(in controller, this);
 		}
+
+		internal void ResetAttributes()
+		{
+			_numAttackThisTurn = 0;
+			_damage = 0;
+			_modifiedATK = null;
+			_modifiedHealth = null;
+			_modifiedCost = null;
+			_modifiedStealth = null;
+			_modifiedTaunt = null;
+			_modifiedCantBeTargetedBySpells = null;
+		}
 	}
 
 	public partial class Minion
@@ -236,7 +243,6 @@ namespace SabberStoneCore.Model.Entities
 			}
 			set
 			{
-				Controller.CurrentSpellPower += (value - SpellPower);
 				this[GameTag.SPELLPOWER] = value;
 			}
 		}
@@ -371,6 +377,7 @@ namespace SabberStoneCore.Model.Entities
 
 				return value > 0;
 			}
+			set => this[GameTag.RUSH] = value ? 1 : 0;
 		}
 
 		public bool AttackableByRush

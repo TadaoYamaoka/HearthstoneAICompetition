@@ -12,11 +12,11 @@
 // GNU Affero General Public License for more details.
 #endregion
 using System;
-using SabberStoneCore.Enchants;
 using SabberStoneCore.Model;
 using SabberStoneCore.Enums;
 using SabberStoneCore.Kettle;
 using SabberStoneCore.Model.Entities;
+using SabberStoneCore.Triggers;
 
 namespace SabberStoneCore.Actions
 {
@@ -42,9 +42,9 @@ namespace SabberStoneCore.Actions
 
 				if (target != null)
 				{
+					game.CurrentEventData = new EventMetaData(heroPower, target);
 					Trigger.ValidateTriggers(game, heroPower, SequenceType.Target);
 					game.TaskQueue.StartEvent();
-					game.CurrentEventData = new EventMetaData(heroPower, target);
 					game.TriggerManager.OnTargetTrigger(heroPower);
 					game.ProcessTasks();
 					game.TaskQueue.EndEvent();

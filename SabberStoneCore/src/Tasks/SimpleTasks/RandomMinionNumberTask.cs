@@ -28,7 +28,8 @@ namespace SabberStoneCore.Tasks.SimpleTasks
 
 		public GameTag Tag { get; set; }
 
-		public override TaskState Process(in Game game, in Controller controller, in IEntity source, in IEntity target,
+		public override TaskState Process(in Game game, in Controller controller, in IEntity source,
+			in IPlayable target,
 			in TaskStack stack = null)
 		{
 			List<Card> cardsList;
@@ -47,7 +48,7 @@ namespace SabberStoneCore.Tasks.SimpleTasks
 					return TaskState.STOP;
 			}
 
-			IPlayable playable = Entity.FromCard(controller, Util.Choose(cardsList));
+			IPlayable playable = Entity.FromCard(controller, cardsList.Choose(game.Random));
 			stack.Playables = new List<IPlayable> {playable};
 
 			game.OnRandomHappened(true);

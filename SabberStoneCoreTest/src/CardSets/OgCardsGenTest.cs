@@ -414,7 +414,7 @@ namespace SabberStoneCoreTest.CardSets
 			Assert.Equal(4, game.CurrentOpponent.HandZone.Count);
 			game.Process(HeroPowerTask.Any(game.CurrentPlayer, minion1));
 			Assert.Equal(5, game.CurrentOpponent.HandZone.Count);
-			Assert.Equal(Race.BEAST, game.CurrentOpponent.HandZone[4].Card.Race);
+			Assert.True(game.CurrentOpponent.HandZone[4].Card.IsRace(Race.BEAST));
 		}
 
 		// ----------------------------------------- SPELL - HUNTER
@@ -4463,17 +4463,18 @@ namespace SabberStoneCoreTest.CardSets
 					_spellCard = spellCard;
 				}
 
-				public override TaskState Process(in Game game, in Controller controller, in IEntity source, in IEntity target,
+				public override TaskState Process(in Game game, in Controller controller, in IEntity source,
+					in IPlayable target,
 					in TaskStack stack = null)
 				{
-					if (!(source.Zone is BoardZone) || source[GameTag.SILENCED] == 1)
+					if (!(source.Zone is BoardZone) || source[GameTag.SILENCED] == 1 || (source.Card.AssetId != 38505))
 						return TaskState.STOP;
 
 					var spellToCast = (Spell) Entity.FromCard(source.Controller, _spellCard);
 
 					spellToCast.CardTarget = source.Id;
 
-					Generic.CastSpell.Invoke(source.Controller, spellToCast, (ICharacter)source, 0, true);
+					Generic.CastSpell.Invoke(source.Controller, game, spellToCast, (ICharacter)source, 0);
 					game.DeathProcessingAndAuraUpdate();
 
 					NumSpellCasted++;
@@ -4489,7 +4490,8 @@ namespace SabberStoneCoreTest.CardSets
 				_spells = spellCardList.AsReadOnly();
 			}
 
-			public override TaskState Process(in Game game, in Controller controller, in IEntity source, in IEntity target,
+			public override TaskState Process(in Game game, in Controller controller, in IEntity source,
+				in IPlayable target,
 				in TaskStack stack = null)
 			{
 				if (source.Card.Id != "OG_134") return TaskState.STOP;

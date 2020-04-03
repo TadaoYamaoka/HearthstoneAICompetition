@@ -79,7 +79,8 @@ namespace SabberStoneCore.Tasks.SimpleTasks
 
 		public SummonSide Side { get; set; }
 
-		public override TaskState Process(in Game game, in Controller controller, in IEntity source, in IEntity target,
+		public override TaskState Process(in Game game, in Controller controller, in IEntity source,
+			in IPlayable target,
 			in TaskStack stack = null)
 		{
 			if (Card == null && stack?.Playables.Count == 0)
@@ -120,14 +121,26 @@ namespace SabberStoneCore.Tasks.SimpleTasks
 				}
 
 				if (summonEntity == null)
+				{
+					if (game.Logging)
+					{
+						object cause = Card != null ? (object)Card : stack?.Playables.Count > 0 ? stack.Playables[0] : null;
+						game.Log(LogLevel.WARNING, BlockType.POWER, "SummonTask",
+							$"Cannot summon {cause}. Please Check the implementation of {source}.");
+					}
+
 					return TaskState.STOP;
+				}
 
 				int summonPosition = GetPosition(in source, Side, stack?.Number ?? 0, ref alternateCount);
 
 				if (summonPosition > controller.BoardZone.Count)
 					summonPosition = controller.BoardZone.Count;
 
-				Generic.SummonBlock.Invoke(game, summonEntity, summonPosition);
+				if (summonEntity.Untouchable)
+					controller.BoardZone.Add(summonEntity, summonPosition);
+				else
+					Generic.SummonBlock.Invoke(game, summonEntity, summonPosition, source);
 			}
 
 			return TaskState.COMPLETE;
@@ -180,6 +193,30 @@ namespace SabberStoneCore.Tasks.SimpleTasks
 				summonPosition = source.Controller.BoardZone.Count;
 
 			return summonPosition;
+		}
+	}
+
+	public class SummonNumberTask : SimpleTask
+	{
+		private readonly Card _card;
+		private readonly bool _op;
+
+		public SummonNumberTask(string cardId, bool opponent)
+		{
+			_card = Cards.FromId(cardId);
+			_op = opponent;
+		}
+
+
+		public override TaskState Process(in Game game, in Controller controller, in IEntity source, in IPlayable target,
+			in TaskStack stack = null)
+		{
+			if (_op)
+				return new SummonOpTask(_card, stack.Number)
+					.Process(in game, in controller, in source, in target, in stack);
+
+			return new SummonTask(card: _card, amount: stack.Number)
+				.Process(in game, in controller, in source, in target, in stack);
 		}
 	}
 }

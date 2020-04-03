@@ -19,30 +19,32 @@ using SabberStoneCore.Model.Entities;
 
 namespace SabberStoneCore.Tasks.SimpleTasks
 {
+	// Remove applied effects of this enchantment
 	public class RemoveEnchantmentTask : SimpleTask
 	{
-		public override TaskState Process(in Game game, in Controller controller, in IEntity source, in IEntity target,
+		public static readonly RemoveEnchantmentTask Task = new RemoveEnchantmentTask();
+		private RemoveEnchantmentTask() {}
+
+		public override TaskState Process(in Game game, in Controller controller, in IEntity source,
+			in IPlayable target,
 			in TaskStack stack = null)
 		{
-			// Remove applied effects of this enchantment
-			//  if (_enchantmentCard != null &&
-			//      _enchantmentCard[Enums.GameTag.TAG_ONE_TURN_EFFECT] != 1 &&
-			//      _enchantmentCard.Power.Enchant?.Effects != null)
-			//foreach (Effect effect in _enchantmentCard.Power.Enchant.Effects)
-			//	effect.Remove(source is Enchantment ec ? ec.Target : source);
-
 			if (!(source is Enchantment e)) throw new NotImplementedException();
 
-			if (e.Power.Enchant?.Effects != null)
-				if (!e.IsOneTurnActive || game.Step != Step.MAIN_CLEANUP)
-					foreach (IEffect effect in e.Power.Enchant.Effects)
-						effect.RemoveFrom(target);
+			Enchant enchant = e.Power.Enchant;
+			if (enchant != null && (!e.IsOneTurnActive || game.Step != Step.MAIN_CLEANUP))
+			{
+				if (enchant.UseScriptTag)
+					enchant.RemoveEffect(e.Target, e.ScriptTag1, e.ScriptTag2);
+				else
+					enchant.RemoveEffect(e.Target);
+
+				if (e.IsOneTurnActive)
+					foreach (IEffect eff in enchant.Effects)
+						game.OneTurnEffects.Remove((e.Target.Id, eff));
+			}
 
 			e.Remove();
-
-			// Remove the enchantment entity
-			//if (source is Enchantment e)
-			// e.Remove();
 
 			return TaskState.COMPLETE;
 		}

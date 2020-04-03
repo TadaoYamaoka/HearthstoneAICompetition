@@ -52,7 +52,7 @@
 //			// --------------------------------------------------------
 //			cards.Add("LOE_115",
 //				//CHOOSE_ONE
-//				null);
+//				new CardDef());
 
 //			// ----------------------------------------- MINION - DRUID
 //			// [LOE_050] Mounted Raptor - COST:3 [ATK:3/HP:2] 
@@ -531,7 +531,7 @@
 //						{
 //							[GameTag.COST] = 0
 //						},
-//						ValueFunc = owner => -owner.Controller.BoardZone.Count(p => p.Card.Race == Race.MURLOC)
+//						ValueFunc = owner => -owner.Controller.BoardZone.Count(p => p.Card.IsRace(Race.MURLOC))
 //					}
 //				},
 //				new Power

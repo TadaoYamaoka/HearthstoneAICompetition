@@ -64,7 +64,11 @@ namespace SabberStoneCore.Model.Entities
 
 		public int TotalAttackDamage => AttackDamage/* + (Weapon?.AttackDamage ?? 0)*/;
 
-		public override bool CanAttack => TotalAttackDamage > 0 && base.CanAttack;
+		public override bool CanAttack
+			=> AttackDamage > 0
+			   && (!IsExhausted || (_extraAttacksThisTurn > 0 && _extraAttacksThisTurn >= _numAttackThisTurn))
+			   && !IsFrozen
+			   && HasAnyValidAttackTargets;
 
 		public override bool HasWindfury
 		{
@@ -79,6 +83,8 @@ namespace SabberStoneCore.Model.Entities
 			get => (AuraEffects?.Immune > 0) || base.IsImmune;
 			set => base.IsImmune = value;
 		}
+
+		public override bool HasOverkill => Weapon?.HasOverkill ?? false;
 
 		public void AddWeapon(Weapon weapon)
 		{
@@ -183,6 +189,18 @@ namespace SabberStoneCore.Model.Entities
 			set => base.CantAttackHeroes = value;
 		}
 
+		private int _extraAttacksThisTurn;
+
+		public int ExtraAttacksThisTurn
+		{
+			get => _extraAttacksThisTurn;
+			set
+			{
+				_extraAttacksThisTurn = value;
+				if (_history)
+					this[GameTag.EXTRA_ATTACKS_THIS_TURN] = value;
+			}
+		}
 #pragma warning restore CS1591 // Missing XML comment for publicly visible type or member
 	}
 }

@@ -6,6 +6,7 @@ using System.Text;
 using SabberStoneCore.Conditions;
 using SabberStoneCore.Enchants;
 using SabberStoneCore.Enums;
+using SabberStoneCore.Kettle;
 using SabberStoneCore.Model;
 using SabberStoneCore.Model.Entities;
 using SabberStoneCore.Model.Zones;
@@ -140,10 +141,7 @@ namespace SabberStoneCore.Auras
 
 			var instance = new Aura(this, owner);
 
-			owner.Game.Auras.Add(instance);
-			owner.OngoingEffect = instance;
-
-			instance.AddToZone();
+			AddToGame(owner, instance);
 
 			if (RemoveTrigger.Type != TriggerType.NONE)
 			{
@@ -164,10 +162,13 @@ namespace SabberStoneCore.Auras
 					case TriggerType.AFTER_PLAY_CARD:
 						owner.Game.TriggerManager.AfterPlayCardTrigger += instance._removeHandler;
 						break;
+					case TriggerType.INSPIRE:
+						owner.Game.TriggerManager.InspireTrigger += instance._removeHandler;
+						break;
 				}
 			}
 
-			if (!cloning)
+			if (!cloning && !Restless)
 				instance.AuraUpdateInstructionsQueue.Enqueue(new AuraUpdateInstruction(Instruction.AddAll), 1);
 
 			#region WIP: Correct History
@@ -233,26 +234,16 @@ namespace SabberStoneCore.Auras
 		/// </summary>
 		public virtual void Update()
 		{
+			bool addAllProcessed = false;
+
 			if (Restless)
 			{
-				if (!On)
-				{
-					RemoveInternal();
-					return;
-				}
-
-				AuraUpdateInstructionsQueue.Clear();
-
-				AppliedEntityIdCollection.ForEach(Game.IdEntityDic, this,
-					(i, dict, aura) => aura.DeApply(dict[i]));
-
-				UpdateInternal();
-
-				return;
+				RenewAll();
+				addAllProcessed = true;
 			}
 
 			Util.PriorityQueue<AuraUpdateInstruction> queue = AuraUpdateInstructionsQueue;
-			bool addAllProcessed = false;
+
 			while (queue.Count != 0)
 			{
 				AuraUpdateInstruction inst = queue.Dequeue();
@@ -313,9 +304,11 @@ namespace SabberStoneCore.Auras
 
 			switch (RemoveTrigger.Type)
 			{
+				case TriggerType.NONE:
+					break;
 				case TriggerType.CAST_SPELL:
 					Game.TriggerManager.CastSpellTrigger -= _removeHandler;
-					return;
+					break;
 				case TriggerType.TURN_END:
 					Game.TriggerManager.EndTurnTrigger -= _removeHandler;
 					break;
@@ -328,6 +321,11 @@ namespace SabberStoneCore.Auras
 				case TriggerType.AFTER_PLAY_CARD:
 					Game.TriggerManager.AfterPlayCardTrigger -= _removeHandler;
 					break;
+				case TriggerType.INSPIRE:
+					Game.TriggerManager.InspireTrigger -= _removeHandler;
+					break;
+				default:
+					throw new NotImplementedException();
 			}
 
 			if (Owner is Enchantment e)
@@ -366,13 +364,10 @@ namespace SabberStoneCore.Auras
 			AuraUpdateInstructionsQueue.Enqueue(new AuraUpdateInstruction(playable, Instruction.Remove), 1);
 		}
 
-		internal void Detach(int id)
-		{
-			AppliedEntityIdCollection.Remove(id);
-		}
-
 		private void UpdateInternal()
 		{
+			if (!On) return;
+
 			switch (Type)
 			{
 				case AuraType.BOARD:
@@ -394,7 +389,7 @@ namespace SabberStoneCore.Auras
 					if (board.Count == 1)
 						return;
 					int pos = Owner.ZonePosition;
-						if (pos > 0)
+					if (pos > 0)
 						Apply(board[pos - 1]);
 					if (pos < board.Count - 1)
 						Apply(board[pos + 1]);
@@ -422,6 +417,10 @@ namespace SabberStoneCore.Auras
 					for (int i = 0; i < Effects.Length; i++)
 						((Effect)Effects[i]).ApplyTo(Owner.Controller.ControllerAuraEffects);
 					break;
+				case AuraType.OPPONENT:
+					for (int i = 0; i < Effects.Length; i++)
+						((Effect)Effects[i]).ApplyTo(Owner.Controller.Opponent.ControllerAuraEffects);
+					break;
 				case AuraType.CONTROLLERS:
 					for (int i = 0; i < Effects.Length; i++)
 					{
@@ -435,6 +434,9 @@ namespace SabberStoneCore.Auras
 				case AuraType.HEROPOWER:
 					Apply(Owner.Controller.Hero.HeroPower);
 					break;
+				case AuraType.OP_HEROPOWER:
+					Apply(Owner.Controller.Opponent.Hero.HeroPower);
+					break;
 				case AuraType.SELF:
 					Apply(Owner);
 					break;
@@ -443,7 +445,7 @@ namespace SabberStoneCore.Auras
 			}
 		}
 
-		private void RemoveInternal()
+		protected virtual void RemoveInternal()
 		{
 			IEffect[] effects = Effects;
 
@@ -452,6 +454,11 @@ namespace SabberStoneCore.Auras
 			{
 				for (int i = 0; i < effects.Length; i++)
 					((Effect)effects[i]).RemoveFrom(Owner.Controller.ControllerAuraEffects);
+			}
+			else if (Type == AuraType.OPPONENT)
+			{
+				for (int i = 0; i < effects.Length; i++)
+					((Effect)effects[i]).RemoveFrom(Owner.Controller.Opponent.ControllerAuraEffects);
 			}
 			else if (Type == AuraType.CONTROLLERS)
 			{
@@ -487,6 +494,11 @@ namespace SabberStoneCore.Auras
 								entity.AppliedEnchantments[i].Remove();
 					});
 			}
+
+			if (Game.Logging)
+				Game.Log(LogLevel.DEBUG, BlockType.TRIGGER, "Aura.RemoveInternal",
+					$"{Owner}'s aura is removed from game and " +
+					$"{string.Join(",", AppliedEntityIdCollection.Select(i => Game.IdEntityDic[i]))})");
 		}
 
 		private void TriggeredRemove(IEntity source)
@@ -502,7 +514,7 @@ namespace SabberStoneCore.Auras
 			Remove();
 		}
 
-		private void DeApply(IPlayable entity)
+		internal void DeApply(IPlayable entity)
 		{
 			if (!AppliedEntityIdCollection.Remove(entity.Id))
 				return;
@@ -510,6 +522,13 @@ namespace SabberStoneCore.Auras
 			for (int i = 0; i < Effects.Length; i++)
 			{
 				Effects[i].RemoveAuraFrom(entity);
+			}
+
+			if (Game.History)
+			{
+				for (int i = 0; i < Effects.Length; i++)
+					Game.PowerHistory.Add(
+						PowerHistoryBuilder.TagChange(entity.Id, Effects[i].Tag, entity[Effects[i].Tag]));
 			}
 
 			if (EnchantmentCard != null && (Game.History || EnchantmentCard.Power.Trigger != null))
@@ -523,6 +542,10 @@ namespace SabberStoneCore.Auras
 						break;
 					}
 			}
+
+			if (Game.Logging)
+				Game.Log(LogLevel.DEBUG, BlockType.TRIGGER, "Aura.DeApply",
+					$"{Owner}'s aura is removed from {entity}.");
 		}
 
 		/// <summary>
@@ -542,6 +565,14 @@ namespace SabberStoneCore.Auras
 			for (int i = 0; i < effects.Length; i++)
 				effects[i].ApplyAuraTo(entity);
 
+			if (Game.History)
+			{
+				for (int i = 0; i < effects.Length; i++)
+					Game.PowerHistory.Add(
+						PowerHistoryBuilder.TagChange(entity.Id, effects[i].Tag, entity[effects[i].Tag]));
+			}
+			
+
 			if (EnchantmentCard != null && ((Game.History /*&& _tempList == null*/) || EnchantmentCard.Power.Trigger != null))
 			{
 				Enchantment instance = Enchantment.GetInstance(entity.Controller, Owner, entity, in EnchantmentCard);
@@ -549,31 +580,79 @@ namespace SabberStoneCore.Auras
 			}
 
 			AppliedEntityIdCollection.Add(entity.Id);
+
+			if (Game.Logging)
+				Game.Log(LogLevel.DEBUG, BlockType.TRIGGER, "Aura.Apply", $"{Owner}'s aura is applied to {entity}.");
+		}
+
+		private void RenewAll()
+		{
+			SelfCondition condition = Condition;
+			Util.SmallFastCollection collection = AppliedEntityIdCollection;
+			void Renew(IPlayable p)
+			{
+				if (condition.Eval(p))
+				{
+					if (!collection.Contains(p.Id))
+						Apply(p);
+				}
+				else
+				{
+					if (collection.Contains(p.Id))
+						DeApply(p);
+				}
+			}
+
+			switch (Type)
+			{
+				case AuraType.BOARD:
+					Owner.Controller.BoardZone.ForEach(Renew);
+					break;
+				case AuraType.HANDS:
+					Owner.Controller.HandZone.ForEach(Renew);
+					Owner.Controller.Opponent.HandZone.ForEach(Renew);
+					break;
+				case AuraType.WEAPON:
+					if (Owner.Controller.Hero.Weapon == null) break;
+					Renew(Owner.Controller.Hero.Weapon);
+					break;
+				case AuraType.HERO:
+					Renew(Owner.Controller.Hero);
+					break;
+				case AuraType.SELF:
+					Renew(Owner);
+					break;
+				default:
+					throw new NotImplementedException($"Restless aura of type {Type} is not implemented.");
+			}
 		}
 
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
-		private void AddToZone()
+		protected static void AddToGame(IPlayable owner, Aura aura)
 		{
-			switch (Type)
+			owner.Game.Auras.Add(aura);
+			owner.OngoingEffect = aura;
+
+			switch (aura.Type)
 			{
 				case AuraType.BOARD:
 				case AuraType.BOARD_EXCEPT_SOURCE:
 				case AuraType.ADJACENT:
-					Owner.Controller.BoardZone.Auras.Add(this);
+					owner.Controller.BoardZone.Auras.Add(aura);
 					break;
 				case AuraType.HAND:
-					Owner.Controller.HandZone.Auras.Add(this);
+					owner.Controller.HandZone.Auras.Add(aura);
 					break;
 				case AuraType.OP_HAND:
-					Owner.Controller.Opponent.HandZone.Auras.Add(this);
+					owner.Controller.Opponent.HandZone.Auras.Add(aura);
 					break;
 				case AuraType.HANDS:
-					Owner.Controller.HandZone.Auras.Add(this);
-					Owner.Controller.Opponent.HandZone.Auras.Add(this);
+					owner.Controller.HandZone.Auras.Add(aura);
+					owner.Controller.Opponent.HandZone.Auras.Add(aura);
 					break;
 				case AuraType.HAND_AND_BOARD:
-					Owner.Controller.HandZone.Auras.Add(this);
-					Owner.Controller.BoardZone.Auras.Add(this);
+					owner.Controller.HandZone.Auras.Add(aura);
+					owner.Controller.BoardZone.Auras.Add(aura);
 					break;
 			}
 		}

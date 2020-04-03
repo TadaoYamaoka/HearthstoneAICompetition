@@ -11,12 +11,13 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU Affero General Public License for more details.
 #endregion
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 //using Newtonsoft.Json;
-using SabberStoneCore.Enchants;
 using SabberStoneCore.Model;
+using SabberStoneCore.src.Loader;
 //using SabberStoneCore.Properties;
 
 namespace SabberStoneCore.Loader
@@ -42,16 +43,30 @@ namespace SabberStoneCore.Loader
 			// Add Powers
 			foreach (Card c in Cards.Values)
 			{
-				if (Powers.Instance.Get.TryGetValue(c.Id, out Power power))
+				if (CardDefs.Instance.Get.TryGetValue(c.Id, out CardDef cardDef))
 				{
-					c.Power = power;
-					c.Implemented = power == null ||
-					                power.PowerTask != null ||
-					                power.DeathrattleTask != null ||
-					                power.ComboTask != null ||
-					                power.Aura != null ||
-					                power.Trigger != null ||
-					                power.Enchant != null;
+					// fill missing playrequirements, last card def with info is CardDefs-36393.xml
+					if (cardDef.PlayReqs != null)
+					{
+						c.SetPlayRequirements(cardDef.PlayReqs);
+					}
+
+					// fill missing entourage, last card def with info is CardDefs-36393.xml
+					if (cardDef.Entourage != null)
+					{
+						c.Entourage = cardDef.Entourage;
+					}
+
+					c.Power = cardDef.Power;
+					c.Implemented = cardDef.Power == null ||
+									cardDef.Power.PowerTask != null ||
+									cardDef.Power.DeathrattleTask != null ||
+									cardDef.Power.ComboTask != null ||
+									cardDef.Power.TopdeckTask != null ||
+									cardDef.Power.OverkillTask != null ||
+									cardDef.Power.Aura != null ||
+									cardDef.Power.Trigger != null ||
+									cardDef.Power.Enchant != null;
 				}
 			}
 		}

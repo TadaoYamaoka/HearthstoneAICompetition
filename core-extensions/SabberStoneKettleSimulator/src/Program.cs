@@ -19,14 +19,18 @@ namespace SabberStoneKettleSimulator
 	{
 		static void Main(string[] args)
 		{
+			KettleServer server;
 			if (args.Length != 1)
 			{
-				Console.WriteLine("Invalid arguments, run as: SabberStoneKettleServer.exe PORT");
-				return;
+				server = new KettleServer(new System.Net.IPEndPoint(System.Net.IPAddress.Any, 50051));
+				//Console.WriteLine("Invalid arguments, run as: SabberStoneKettleServer.exe PORT");
+				//return;
+				server.Enter();
+			} else
+			{
+				server = new KettleServer(new System.Net.IPEndPoint(System.Net.IPAddress.Any, int.Parse(args[0])));
+				server.Enter();
 			}
-
-			KettleServer server = new KettleServer(new System.Net.IPEndPoint(System.Net.IPAddress.Any, int.Parse(args[0])));
-			server.Enter();
 		}
 	}
 }

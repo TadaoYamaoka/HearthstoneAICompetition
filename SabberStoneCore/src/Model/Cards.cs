@@ -18,6 +18,7 @@ using System.Linq;
 using System.Text;
 using SabberStoneCore.Enums;
 using SabberStoneCore.Loader;
+using static SabberStoneCore.Model.Cards;
 
 namespace SabberStoneCore.Model
 {
@@ -39,12 +40,13 @@ namespace SabberStoneCore.Model
 			CardSet.CORE,
 			CardSet.EXPERT1,
 
-			CardSet.UNGORO,
-			CardSet.ICECROWN,
-			CardSet.LOOTAPALOOZA,
-			CardSet.GILNEAS,
-			CardSet.BOOMSDAY,
-			CardSet.TROLL
+			CardSet.GILNEAS, // 2018 The Witchwood
+			CardSet.BOOMSDAY, // 2018 The Boomsday Project
+			CardSet.TROLL, // 2018 Rastakhan’s Rumble
+
+			CardSet.DALARAN, // 2019 Rise of Shadows
+			CardSet.ULDUM, // 2019 Saviors of Uldum
+			CardSet.DRAGONS // 2019 Descent of Dragons
 		};
 
 		/// <summary>
@@ -56,12 +58,12 @@ namespace SabberStoneCore.Model
 			CardSet.CORE,
 			CardSet.EXPERT1,
 
-			CardSet.UNGORO,
-			CardSet.ICECROWN,
-			CardSet.LOOTAPALOOZA,
 			CardSet.GILNEAS,
 			CardSet.BOOMSDAY,
 			CardSet.TROLL,
+			CardSet.DALARAN,
+			CardSet.ULDUM,
+			CardSet.DRAGONS,
 
 			// wild
 			CardSet.BRM,
@@ -72,6 +74,9 @@ namespace SabberStoneCore.Model
 			CardSet.OG,
 			CardSet.KARA,
 			CardSet.GANGS,
+			CardSet.UNGORO,
+			CardSet.ICECROWN,
+			CardSet.LOOTAPALOOZA,
 
 			// hall of fame
 			CardSet.HOF
@@ -111,18 +116,24 @@ namespace SabberStoneCore.Model
 			Data.Load(cards);
 
 			//Log.Debug("Standard:");
-			Enum.GetValues(typeof(CardClass)).Cast<CardClass>().ToList().ForEach(heroClass =>
+			//Enum.GetValues(typeof(CardClass)).Cast<CardClass>().ToList().ForEach(heroClass =>
+			for (int i = 0; i < HeroClasses.Length; i++)
 			{
+				CardClass heroClass = HeroClasses[i];
 				Standard.Add(heroClass, All.Where(c =>
-				c.Collectible &&
+					c.Collectible &&
 					(c.Class == heroClass ||
 					 c.Class == CardClass.NEUTRAL && c.MultiClassGroup == 0 ||
-					 c.MultiClassGroup == 1 && (c.Class == CardClass.NEUTRAL || c.Class == CardClass.HUNTER || c.Class == CardClass.PALADIN || c.Class == CardClass.WARRIOR) ||
-					 c.MultiClassGroup == 2 && (c.Class == CardClass.NEUTRAL || c.Class == CardClass.DRUID || c.Class == CardClass.ROGUE || c.Class == CardClass.SHAMAN) ||
-					 c.MultiClassGroup == 3 && (c.Class == CardClass.NEUTRAL || c.Class == CardClass.MAGE || c.Class == CardClass.PRIEST || c.Class == CardClass.WARLOCK)) &&
-					 c.Type != CardType.HERO && StandardSets.Contains(c.Set)).ToList().AsReadOnly());
+					 c.MultiClassGroup == 1 && (c.Class == CardClass.NEUTRAL || c.Class == CardClass.HUNTER ||
+					                            c.Class == CardClass.PALADIN || c.Class == CardClass.WARRIOR) ||
+					 c.MultiClassGroup == 2 && (c.Class == CardClass.NEUTRAL || c.Class == CardClass.DRUID ||
+					                            c.Class == CardClass.ROGUE || c.Class == CardClass.SHAMAN) ||
+					 c.MultiClassGroup == 3 && (c.Class == CardClass.NEUTRAL || c.Class == CardClass.MAGE ||
+					                            c.Class == CardClass.PRIEST || c.Class == CardClass.WARLOCK)) &&
+					c.Type != CardType.HERO && StandardSets.Contains(c.Set)).ToList().AsReadOnly());
 				//Log.Debug($"-> [{heroClass}] - {Standard[heroClass].Count} cards.");
-			});
+				//});
+			}
 
 			//Log.Debug("AllStandard:");
 			AllStandard = All.Where(c => c.Collectible && c.Type != CardType.HERO && StandardSets.Contains(c.Set)).ToList().AsReadOnly();
@@ -146,6 +157,22 @@ namespace SabberStoneCore.Model
 
 			StandardCostMinionCards = AllStandard.Where(c => c.Type == CardType.MINION).GroupBy(c => c.Cost).ToDictionary(g => g.Key, g => g.ToList());
 			WildCostMinionCards = AllWild.Where(c => c.Type == CardType.MINION).GroupBy(c => c.Cost).ToDictionary(g => g.Key, g => g.ToList());
+
+			// Temporary fix for Lotus Assassin
+			Data.Cards["CFM_634"].Stealth = true;
+			Data.Cards["CFM_634"].Tags.Add(GameTag.STEALTH, 1);
+
+			// Basic Totems
+			BasicTotems = new[]
+			{
+				FromId("NEW1_009"),	// Healing Totem
+				FromId("CS2_050"),	// Searing Totem
+				FromId("CS2_051"),	// Stoneclaw Totem
+				FromId("CS2_052")	// Wraith of Air Totem
+			};
+
+			// filtered out cards ... cosmetic purpose
+			Data.Cards.Remove("HERO_01c"); // HERO Deathwing
 		}
 
 		#endregion
@@ -181,6 +208,15 @@ namespace SabberStoneCore.Model
 		/// All cards belonging to the Wild set.
 		/// </summary>
 		public static ReadOnlyCollection<Card> AllWild { get; }
+
+		/// <summary>
+		/// A list of the four basic totems.
+		/// [0]: Healing
+		/// [1]: Searing
+		/// [2]: Stoneclaw
+		/// [3]: Wraith of Air
+		/// </summary>
+		public static IReadOnlyList<Card> BasicTotems { get; private set; }
 
 		/// <summary>
 		/// Retrieves the specified set of cards, sorted by <see cref="CardClass"/>.
@@ -361,6 +397,12 @@ namespace SabberStoneCore.Model
 					return "The Boomsday Project";
 				case CardSet.TROLL:
 					return "Rastakhan\'s Rumble";
+				case CardSet.DALARAN:
+					return "Rise of Shadows";
+				case CardSet.ULDUM:
+					return "Saviors of Uldum";
+				case CardSet.DRAGONS:
+					return "Descent of Dragons";
 				default:
 					throw new ArgumentOutOfRangeException(nameof(cardSet), cardSet, null);
 			}
@@ -393,7 +435,7 @@ namespace SabberStoneCore.Model
 			int totCards = 0;
 			foreach (CardSet set in StandardSets)
 			{
-				int impl = implemented.FirstOrDefault(p => p.Key == set).Count;
+				int impl = implemented.FirstOrDefault(p => p.Key == set)?.Count ?? 0;
 				totImpl += impl;
 				int tot = all.FirstOrDefault(p => p.Key == set).Count;
 				str.AppendLine($"{CardSetToName(set)} => {impl * 100 / tot}% from {tot} Cards");
@@ -407,7 +449,7 @@ namespace SabberStoneCore.Model
 			totCards = 0;
 			foreach (CardSet set in WildSets)
 			{
-				int impl = implementedWild.FirstOrDefault(p => p.Key == set).Count;
+				int impl = implementedWild.FirstOrDefault(p => p.Key == set)?.Count ?? 0;
 				totImpl += impl;
 				int tot = allWild.FirstOrDefault(p => p.Key == set).Count;
 				str.AppendLine($"{CardSetToName(set)} => {impl * 100 / tot}% from {tot} Cards");

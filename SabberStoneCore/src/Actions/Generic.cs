@@ -45,7 +45,7 @@ namespace SabberStoneCore.Actions
 				else if (source is HeroPower)
 				{
 					// TODO: Consider this part only when TGT or Rumble is loaded
-					// amount += source.Controller.Hero.HeroPowerDamage; 
+					amount += source.Controller.Hero.HeroPowerDamage;
 					if (source.Controller.ControllerAuraEffects[GameTag.HERO_POWER_DOUBLE] > 0)
 						amount *= (int)Math.Pow(2, source.Controller.ControllerAuraEffects[GameTag.HERO_POWER_DOUBLE]);
 				}
@@ -66,23 +66,23 @@ namespace SabberStoneCore.Actions
 			=> delegate (Controller c, int amount, bool fill)
 			{
 				int baseMana = c.BaseMana;
-
-				if (baseMana + amount > c.MaxResources)
+				int total = baseMana + amount;
+				if (total > Controller.MaxResources)
 				{
-					c.Game.Log(LogLevel.INFO, BlockType.PLAY, "ChangeManaCrystal", !c.Game.Logging ? "" : $"{c.Name} is already capped in {c.MaxResources} mana crystals.");
+					c.Game.Log(LogLevel.INFO, BlockType.PLAY, "ChangeManaCrystal", !c.Game.Logging ? "" : $"{c.Name} is already capped in {Controller.MaxResources} mana crystals.");
 					if (!fill)
-						c.UsedMana += c.MaxResources - c.BaseMana;
-					c.BaseMana = c.MaxResources;
+						c.UsedMana += Controller.MaxResources - c.BaseMana;
+					c.BaseMana = Controller.MaxResources;
 
 				}
-				else if (baseMana + amount < 0)
+				else if (total < 0)
 				{
 					c.Game.Log(LogLevel.INFO, BlockType.PLAY, "ChangeManaCrystal", !c.Game.Logging ? "" : $"{c.Name} is back to minimum of 0 mana crystals.");
 					c.BaseMana = 0;
 				}
 				else
 				{
-					c.BaseMana = baseMana + amount;
+					c.BaseMana = total;
 					if (!fill)
 						c.UsedMana += amount;
 				}
@@ -153,11 +153,28 @@ namespace SabberStoneCore.Actions
 		public static Func<Controller, CardType, IPlayable> JoustBlock
 			=> delegate (Controller c, CardType type)
 			{
-				IPlayable[] stack = c.DeckZone.GetAll(p => p.Card.Type == type);
-				IPlayable[] opStack = c.Opponent.DeckZone.GetAll(p => p.Card.Type == type);
+				IPlayable card, cardOp;
+				{
+					var rnd = c.Game.Random;
+					var span = c.DeckZone.GetSpan();
+					Span<int> buffer = stackalloc int[Math.Max(c.DeckZone.Count, c.Opponent.DeckZone.Count)];
+					int k = 0;
+					for (int i = 0; i < span.Length; i++)
+					{
+						if (span[i].Card.Type != type) continue;
+						buffer[k++] = i;
+					}
+					card = k == 0 ? null : span[rnd.Next(k)];
 
-				IPlayable card = stack.Length > 0 ? Util.Choose(stack) : null;
-				IPlayable cardOp = opStack.Length > 0 ? Util.Choose(opStack) : null;
+					span = c.Opponent.DeckZone.GetSpan();
+					k = 0;
+					for (int i = 0; i < span.Length; i++)
+					{
+						if (span[i].Card.Type != type) continue;
+						buffer[k++] = i;
+					}
+					cardOp = k == 0 ? null : span[rnd.Next(k)];
+				}
 
 				if (c.Game.History)
 				{
@@ -223,7 +240,8 @@ namespace SabberStoneCore.Actions
 				c.Game.Log(LogLevel.INFO, BlockType.PLAY, "ShuffleIntoDeck", !c.Game.Logging ? "" : $"adding to deck {playable}.");
 
 				// don't activate powers when shuffling cards back into the deck
-				c.DeckZone.Add(playable, c.DeckZone.Count == 0 ? -1 : Util.Random.Next(c.DeckZone.Count + 1));
+				//c.DeckZone.Add(playable, c.DeckZone.Count == 0 ? -1 : Util.Random.Next(c.DeckZone.Count + 1));
+				c.DeckZone.AddAtRandomPosition(playable);
 
 				if (sender is IPlayable p && c.Game.TriggerManager.HasShuffleIntoDeckTrigger)
 				{
@@ -261,80 +279,60 @@ namespace SabberStoneCore.Actions
 					c.Game.CurrentEventData.EventSource = newMinion;
 
 				c.BoardZone.Replace(oldMinion, newMinion);
-				if (!newMinion.HasCharge)
-					newMinion.IsExhausted = true;
 
 				c.Game.Log(LogLevel.INFO, BlockType.PLAY, "TransformBlock", !c.Game.Logging ? "" : $"{oldMinion} got transformed into {newMinion}.");
 				return true;
 			};
 
 		/// <summary>
-		/// Controller, Card, Creator, Target, ScriptTag1, ScriptTag2, UseEntityId
+		/// Creates a new <see cref="Enchantment"/> and attaches it to the given target.
 		/// </summary>
-		public static Func<Controller, Card, IPlayable, IEntity, int, int, bool, bool> AddEnchantmentBlock
-			=> delegate (Controller c, Card enchantmentCard, IPlayable creator, IEntity target, int num1, int num2, bool useEntityId)
-			{
-				Power power = enchantmentCard.Power;
+		/// <param name="g">The game context.</param>
+		/// <param name="enchantmentCard">The base Card for the enchantment.</param>
+		/// <param name="creator">The creator entity.</param>
+		/// <param name="target">The target entity.</param>
+		/// <param name="num1">ScriptTag1</param>
+		/// <param name="num2">ScriptTag2</param>
+		/// <param name="entityId">The entity ID to be stored in the enchantment. (e.g. carnivorous Cube)</param>
+		public static void AddEnchantmentBlock(in Game g, in Card enchantmentCard, in IPlayable creator, IEntity target, int num1 = -1, int num2 = -1, int entityId = 0)
+		{
+			Power power = enchantmentCard.Power;
 
-				if (power.Enchant is OngoingEnchant && target is IPlayable entity && entity.OngoingEffect is OngoingEnchant ongoingEnchant)
+			if (power.Enchant is OngoingEnchant &&
+			    target is IPlayable entity &&
+			    entity.OngoingEffect is OngoingEnchant ongoingEnchant)
+			{	// Increment the count of existing OngoingEnchant
+				ongoingEnchant.Count++;
+				return;
+			}
+
+			if (g.History || power.Aura != null || power.Trigger != null || power.DeathrattleTask != null || enchantmentCard.Modular)
+			{	// Create Enchantment instance Only when it is needed.
+				// As an owner entity for Auras, Triggers or Deathrattle tasks.
+				// We also maintain Modular (Magnetic) Enchantments for Kangor's Endless Army.
+				Enchantment enchantment = Enchantment.GetInstance(creator.Controller, in creator, in target, in enchantmentCard, num1, num2);
+
+				power.Aura?.Activate(enchantment);
+				power.Trigger?.Activate(enchantment);
+
+				if (power.Enchant?.RemoveWhenPlayed ?? false)
+					Enchant.RemoveWhenPlayedTrigger.Activate(enchantment);
+
+				if (entityId > 0)
 				{
-					ongoingEnchant.Count++;
-					return true;
+					enchantment.CapturedCard = g.IdEntityDic[entityId].Card;
+					if (g.Logging)
+						g.Log(LogLevel.DEBUG, BlockType.POWER,
+							"AddEnchantmentBlock", $"{g.IdEntityDic[entityId]} is captured in {enchantment}.");
 				}
+			}
 
-				if (c.Game.History)
-				{
-					Enchantment enchantment = Enchantment.GetInstance(in c, in creator, in target, in enchantmentCard);
-
-					if (num1 > 0)
-					{
-						enchantment[GameTag.TAG_SCRIPT_DATA_NUM_1] = num1;
-						if (num2 > 0)
-							enchantment[GameTag.TAG_SCRIPT_DATA_NUM_2] = num2;
-					}
-
-					power.Aura?.Activate(enchantment);
-					power.Trigger?.Activate(enchantment);
-					power.Enchant?.ActivateTo(target, enchantment);
-
-					if (power.Enchant?.RemoveWhenPlayed ?? false)
-						Enchant.RemoveWhenPlayedTrigger.Activate(enchantment);
-
-					if (power.DeathrattleTask != null)
-						((IPlayable)target).HasDeathrattle = true;
-
-					if (useEntityId)
-						enchantment.CapturedCard = c.Game.IdEntityDic[num1].Card;
-				}
-				else
-				{
-					if (power.Aura != null || power.Trigger != null || power.DeathrattleTask != null)
-					{
-						Enchantment instance = Enchantment.GetInstance(in c, in creator, in target, in enchantmentCard);
-						if (num1 > 0)
-						{
-							instance[GameTag.TAG_SCRIPT_DATA_NUM_1] = num1;
-							if (num2 > 0)
-								instance[GameTag.TAG_SCRIPT_DATA_NUM_2] = num2;
-						}
-						power.Aura?.Activate(instance);
-						power.Trigger?.Activate(instance);
-
-						if (power.Enchant?.RemoveWhenPlayed ?? false)
-							Enchant.RemoveWhenPlayedTrigger.Activate(instance);
-
-						if (useEntityId)
-							instance.CapturedCard = c.Game.IdEntityDic[num1].Card;
-					}
-
-					//	no indicator enchantment entities when History option is off
-					power.Enchant?.ActivateTo(target, null, num1, num2);
-				}
-				return true;
-			};
+			//	no indicator enchantment entities when History option is off
+			power.Enchant?.ActivateTo(target, num1, num2);
+		}
 
 		public static Func<Controller, IPlayable, Card, bool, IPlayable> ChangeEntityBlock
-			=> delegate(Controller c, IPlayable p, Card newCard, bool removeEnchantments)
+			=> delegate (Controller c, IPlayable p, Card newCard, bool removeEnchantments)
 			{
 				c.Game.Log(LogLevel.VERBOSE, BlockType.TRIGGER, "ChangeEntityBlock",
 					!c.Game.Logging ? "" : $"{p} is changed into {newCard}.");
@@ -350,12 +348,9 @@ namespace SabberStoneCore.Actions
 							p.AppliedEnchantments[i].Remove();
 
 					if (p is Minion m)
-					{
-						m._modifiedATK = m.Card.ATK;
-						m._modifiedHealth = m.Card.Health;
-					}
-
-					((Playable)p).ResetCost();
+						m.ResetAttributes();
+					else
+						((Playable) p).ResetCost();
 				}
 
 				p.ActivatedTrigger?.Remove();
@@ -363,40 +358,100 @@ namespace SabberStoneCore.Actions
 
 				HandZone hand = p.Zone as HandZone;
 				BoardZone board = p.Zone as BoardZone;
+				int id = p.Id;
 
 				// Detach the target from Auras
 				if (hand != null)
-					hand.Auras.ForEach(a => a.Detach(p.Id));
+					hand.Auras.ForEach(a => a.DeApply(p));
 				else if
 					(board != null)
-					board.Auras.ForEach(a => a.Detach(p.Id));
+				{
+					board.Auras.ForEach(a => a.DeApply(p));
 
+					if (p.Card.Untouchable)
+					{
+						board.DecrementUntouchablesCount();
+					}
+				}
 
-				// TODO: PowerHistoryChangeEntity
-				// send tag variations and the id of the new Card
-				// Tag.REAL_TIME_TRANSFORM = 0
 
 				if (p.Card.Type == newCard.Type)
+				{
+					if (c.Game.History)
+					{
+						EntityData differTags = new EntityData();
+						Dictionary<GameTag, int> newTags = newCard.Tags;
+						foreach (KeyValuePair<GameTag, int> item in p.Card.Tags)
+							differTags.Add(item.Key,
+								newTags.TryGetValue(item.Key, out int value)
+									? value
+									: 0);
+						foreach (KeyValuePair<GameTag, int> item in newTags)
+							if (!differTags.ContainsKey(item.Key))
+								differTags.Add(item);
+
+						c.Game.PowerHistory.Add(new PowerHistoryChangeEntity()
+						{
+							CardId = newCard.Id,
+							Entity = new PowerHistoryEntity()
+							{
+								Id = p.Id,
+								Name = "",
+								Tags = differTags
+							}
+						});
+					}
+
+
 					p.Card = newCard;
+					Playable pp = (Playable)p;
+					if (pp._costManager != null)
+						pp._modifiedCost = pp._costManager.EntityChanged(newCard.Cost);
+				}
 				else
 				{
-					IPlayable entity;
+					Playable entity;
 					switch (newCard.Type)
 					{
 						case CardType.MINION:
-							entity = new Minion(c, newCard, p.NativeTags, p.Id);
+							entity = new Minion(c, newCard, p.NativeTags, id);
 							break;
 						case CardType.SPELL:
-							entity = new Spell(c, newCard, p.NativeTags, p.Id);
+							entity = new Spell(c, newCard, p.NativeTags, id);
 							break;
 						case CardType.HERO:
-							entity = new Hero(c, newCard, p.NativeTags, p.Id);
+							entity = new Hero(c, newCard, p.NativeTags, id);
 							break;
 						case CardType.WEAPON:
-							entity = new Weapon(c, newCard, p.NativeTags, p.Id);
+							entity = new Weapon(c, newCard, p.NativeTags, id);
 							break;
 						default:
 							throw new ArgumentNullException();
+					}
+
+					if (c.Game.History)
+					{
+						EntityData differTags = new EntityData();
+						Dictionary<GameTag, int> newTags = newCard.Tags;
+						foreach (KeyValuePair<GameTag, int> item in c.Card.Tags)
+							differTags.Add(item.Key,
+								newTags.TryGetValue(item.Key, out int value)
+									? value
+									: 0);
+						foreach (KeyValuePair<GameTag, int> item in newTags)
+							if (!differTags.ContainsKey(item.Key))
+								differTags.Add(item);
+
+						c.Game.PowerHistory.Add(new PowerHistoryChangeEntity()
+						{
+							CardId = newCard.Id,
+							Entity = new PowerHistoryEntity()
+							{
+								Id = p.Id,
+								Name = "",
+								Tags = differTags
+							}
+						});
 					}
 
 					if (hand != null)
@@ -405,21 +460,26 @@ namespace SabberStoneCore.Actions
 						(board != null)
 						board.ChangeEntity((Minion)p, (Minion)entity);
 					else if (p.Zone is DeckZone deck)
-						entity.Zone = deck;
-					
-					c.Game.IdEntityDic[p.Id] = entity;
+						deck.ChangeEntity(p, entity);
+
+					c.Game.IdEntityDic[id] = entity;
+
+					Playable pp = (Playable)p;
+					if (pp._costManager != null)
+						entity._modifiedCost = pp._costManager.EntityChanged(newCard.Cost);
+					entity._costManager = pp._costManager;
 					p = entity;
 				}
+
 				if (newCard.ChooseOne)
 				{
-
 					EntityData tags = null;
 					if (c.Game.History)
 					{
 						tags = new EntityData
 						{
-							{GameTag.CREATOR, p.Id},
-							{GameTag.PARENT_CARD, p.Id}
+							{GameTag.CREATOR, id},
+							{GameTag.PARENT_CARD, id}
 						};
 					}
 
@@ -444,33 +504,87 @@ namespace SabberStoneCore.Actions
 					}
 				}
 
-				switch (p.Zone.Type)
-				{
-					case Zone.HAND:
-						p.Power?.Trigger?.Activate(p, TriggerActivation.HAND);
-						if (p.Power?.Aura is AdaptiveCostEffect e)
-							e.Activate((Playable)p);
-						break;
-					case Zone.DECK:
-						p.Power?.Trigger?.Activate(p, TriggerActivation.DECK);
-						break;
-					case Zone.PLAY:
-						BoardZone.ActivateAura((Minion) p);
-						break;
-				}
+				//switch (p.Zone.Type)
+				//{
+				//	case Zone.HAND:
+				//		p.Power?.Trigger?.Activate(p, TriggerActivation.HAND);
+				//		if (p.Power?.Aura is AdaptiveCostEffect e)
+				//			e.Activate((Playable)p);
+				//		break;
+				//	case Zone.DECK:
+				//		p.Power?.Trigger?.Activate(p, TriggerActivation.DECK);
+				//		break;
+				//	case Zone.PLAY:
+				//		BoardZone.ActivateAura((Minion) p);
+				//		break;
+				//}
 
 
 				// Reapply auras
 				if (hand != null)
+				{
+					p.Power?.Trigger?.Activate(p, TriggerActivation.HAND);
+					if (p.Power?.Aura is AdaptiveCostEffect e)
+						e.Activate((Playable) p);
 					hand.Auras.ForEach(a => a.EntityAdded(p));
-				else if
-					(board != null)
+				}
+				else if (board != null)
+				{
+					Minion m = (Minion)p;
+					if (m.Controller == c.Game.CurrentPlayer)
+					{
+						if (!m.HasCharge)
+						{
+							if (m.IsRush)
+							{
+								m.IsExhausted = false;
+								m.AttackableByRush = true;
+								c.Game.RushMinions.Add(m.Id);
+							}
+							else
+								m.IsExhausted = true;
+						}
+						else
+							m.IsExhausted = false;
+					}
+					else
+						m.IsExhausted = true;
+					BoardZone.ActivateAura(m);
 					board.Auras.ForEach(a => a.EntityAdded(p));
+					board.AdjacentAuras.ForEach(a => a.BoardChanged = true);
+				}
+				else if (p.Zone.Type == Zone.DECK)
+				{
+					p.Power?.Trigger?.Activate(p, TriggerActivation.DECK);
+				}
 
 				// Not sure C'Thun from Shifter Zerus will have Proxy's buffs
 
 				return p;
 			};
+
+		public static void OverloadBlock(Controller controller, IPlayable source, bool history)
+		{
+			if (!source.Card.HasOverload)
+				return;
+
+			if (source is Spell s && s.IsCountered)
+				return;
+
+			if (history)
+				controller.Game.PowerHistory.Add(
+					PowerHistoryBuilder.BlockStart(BlockType.POWER, source.Id, "", 1, 0));
+
+			int amount = source.Card.Overload;
+
+			controller.OverloadOwed += amount;
+			controller.OverloadThisGame += amount;
+			controller.Game.TriggerManager.OnOverloadTrigger(source, amount);
+
+			if (history)
+				controller.Game.PowerHistory.Add(
+					PowerHistoryBuilder.BlockEnd());
+		}
 
 		// Work in progress
 		public static void RevealCardBlock(IPlayable source, IPlayable target)
@@ -488,7 +602,7 @@ namespace SabberStoneCore.Actions
 
 		// TODO: Posionous Block
 		public static Func<bool, ICharacter, ICharacter, bool> PoisonousBlock
-			=> delegate(bool history, ICharacter source, ICharacter target)
+			=> delegate (bool history, ICharacter source, ICharacter target)
 			{
 				if (source[GameTag.POISONOUS] != 1)
 					return false;
@@ -497,8 +611,8 @@ namespace SabberStoneCore.Actions
 				{
 					source.Game.PowerHistory.Add(PowerHistoryBuilder.BlockStart(BlockType.TRIGGER, source.Id, "", -1,
 						0)); //	SubOption = -1, TriggerKeyWord = POISONOUS
-					//[DebugPrintPower] META_DATA - Meta=TARGET Data = 0 Info=1
-					//[DebugPrintPower] Info[0] = [entityName=Goldshire Footman id=47 zone=PLAY zonePos=1 cardId=CS1_042 player=2]
+							 //[DebugPrintPower] META_DATA - Meta=TARGET Data = 0 Info=1
+							 //[DebugPrintPower] Info[0] = [entityName=Goldshire Footman id=47 zone=PLAY zonePos=1 cardId=CS1_042 player=2]
 				}
 
 				target.ToBeDestroyed = true;

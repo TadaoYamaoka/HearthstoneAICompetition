@@ -64,9 +64,8 @@ namespace SabberStoneCore.Actions
 							instance[GameTag.TAG_SCRIPT_DATA_NUM_1] = e[GameTag.TAG_SCRIPT_DATA_NUM_1];
 							if (e[GameTag.TAG_SCRIPT_DATA_NUM_2] > 0)
 								instance[GameTag.TAG_SCRIPT_DATA_NUM_2] = e[GameTag.TAG_SCRIPT_DATA_NUM_2];
-
-							instance.CapturedCard = e.CapturedCard;
 						}
+						instance.CapturedCard = e.CapturedCard;
 
 						if (e.IsOneTurnActive)
 							instance.Game.OneTurnEffectEnchantments.Add(instance);
@@ -74,8 +73,8 @@ namespace SabberStoneCore.Actions
 					
 				}
 
-				var kvps = new KeyValuePair<GameTag, int>[source.NativeTags.Count];
-				source.NativeTags.CopyTo(kvps, 0);
+				//var kvps = new KeyValuePair<GameTag, int>[source.NativeTags.Count];
+				//source.NativeTags.CopyTo(kvps, 0);
 
 				//for (int i = 0; i < kvps.Length; i++)
 				//{
@@ -128,7 +127,7 @@ namespace SabberStoneCore.Actions
 						if (position > controller.BoardZone.Count)
 							position = controller.BoardZone.Count;
 					}
-					Generic.SummonBlock.Invoke(controller.Game, (Minion) copiedEntity, position);
+					Generic.SummonBlock.Invoke(controller.Game, (Minion) copiedEntity, position, creator);
 					break;
 				case Zone.SETASIDE:
 					controller.SetasideZone.Add(copiedEntity);

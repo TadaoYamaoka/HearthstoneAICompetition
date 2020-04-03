@@ -13,7 +13,6 @@
 #endregion
 using System;
 using System.Collections.Concurrent;
-using System.Collections.Generic;
 using System.Linq;
 using SabberStoneCore.Actions;
 using SabberStoneCore.Enums;
@@ -36,7 +35,8 @@ namespace SabberStoneCore.Tasks.SimpleTasks
 			_phaseShift = phaseShift;
 		}
 
-		public override TaskState Process(in Game game, in Controller controller, in IEntity source, in IEntity target,
+		public override TaskState Process(in Game game, in Controller controller, in IEntity source,
+			in IPlayable target,
 			in TaskStack stack = null)
 		{
 			if (_condition != null && !CachedCardLists.TryGetValue(source.Card.AssetId, out Card[] cards))
@@ -54,11 +54,12 @@ namespace SabberStoneCore.Tasks.SimpleTasks
 			}
 
 			Controller c = source.Controller;
+			Util.DeepCloneableRandom rnd = game.Random;
 
 			Card randCard;
 			do
 			{
-				randCard = cards[Random.Next(cards.Length)];
+				randCard = cards[rnd.Next(cards.Length)];
 			} while (!randCard.Implemented || randCard.HideStat);
 
 			game.OnRandomHappened(true);
@@ -74,29 +75,15 @@ namespace SabberStoneCore.Tasks.SimpleTasks
 				return TaskState.COMPLETE;
 			}
 
-			ICharacter randTarget = null;
-			if (randCard.TargetingType != TargetingType.None)
-			{
-				var targets = (List<ICharacter>) spellToCast.ValidPlayTargets;
+			ICharacter randTarget = spellToCast.GetRandomValidTarget();
 
-				randTarget = targets.Count > 0 ? Util.RandomElement(targets) : null;
-
-				spellToCast.CardTarget = randTarget?.Id ?? -1;
-
-				game.Log(LogLevel.INFO, BlockType.POWER, "CastRandomSpellTask",
-					!game.Logging ? "" : $"{spellToCast}'s target is randomly selected to {randTarget}");
-			}
-
-			int randChooseOne = Random.Next(1, 3);
-
-			if (randCard.HasOverload)
-				c.OverloadOwed = randCard.Overload;
+			int randChooseOne = rnd.Next(1, 3);
 
 			Choice choiceTemp = c.Choice;
 			c.Choice = null;
 
 			game.TaskQueue.StartEvent();
-			Generic.CastSpell.Invoke(c, spellToCast, randTarget, randChooseOne, true);
+			Generic.CastSpell.Invoke(c, game, spellToCast, randTarget, randChooseOne);
 			// forced death processing & AA (Yogg)
 			if (_phaseShift)
 				game.DeathProcessingAndAuraUpdate();
@@ -109,7 +96,7 @@ namespace SabberStoneCore.Tasks.SimpleTasks
 			while (c.Choice != null)
 			{
 				game.TaskQueue.StartEvent();
-				Generic.ChoicePick.Invoke(c, Util.Choose(c.Choice.Choices));
+				Generic.ChoicePick.Invoke(c, game, c.Choice.Choices.Choose(game.Random));
 				game.ProcessTasks();
 				game.TaskQueue.EndEvent();
 				game.DeathProcessingAndAuraUpdate();

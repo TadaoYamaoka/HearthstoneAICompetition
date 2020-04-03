@@ -20,6 +20,7 @@ using SabberStoneCore.Enchants;
 using SabberStoneCore.Enums;
 using SabberStoneCore.Kettle;
 using SabberStoneCore.Model.Zones;
+using SabberStoneCore.Triggers;
 
 namespace SabberStoneCore.Model.Entities
 {
@@ -27,13 +28,18 @@ namespace SabberStoneCore.Model.Entities
 	{
 		private readonly EntityData _tags;
 		private int _creatorId;
+		private int _targetId;
 		private int _controllerId;
 		private IPlayable _creator;
+		private IEntity _target;
 		private Controller _controller;
 		private Card _capturedCard;
 
 		private Enchantment(in Controller controller, in Card card, in EntityData tags, in int id)
 		{
+			_history = controller.Game.History;
+			_logging = controller.Game.Logging;
+
 			Game = controller.Game;
 			Controller = controller;
 			Card = card;
@@ -43,59 +49,69 @@ namespace SabberStoneCore.Model.Entities
 
 		private Enchantment(in Controller c, in Enchantment e)
 		{
-				Game = c.Game;
-				Card = e.Card; 
-				Id = e.Id;
-				//Target = e.Target is IPlayable ? (IEntity) Game.IdEntityDic[e.Target.Id] : c;
-				if (Game.IdEntityDic.ContainsKey(e.Target.Id))
-					Target = e.Target is IPlayable ? (IEntity) Game.IdEntityDic[e.Target.Id] : c;
-				else
-					Target = c;
+			_history = c.Game.History;
+			_logging = c.Game.Logging;
 
-				_controllerId = e._controllerId;
-				_creatorId = e._creatorId;
-				_capturedCard = e._capturedCard;
-				//e.OngoingEffect?.Clone(this);
-				e.ActivatedTrigger?.Activate(this);
-		
-				if (Game.IdEntityDic.ContainsKey(Id))
-					Game.IdEntityDic[Id] = this;
-				else
-					Game.IdEntityDic.Add(Id, this);
+			Game = c.Game;
+			Card = e.Card;
+			Id = e.Id;
+			//Target = e.Target is IPlayable ? (IEntity) Game.IdEntityDic[e.Target.Id] : c;
+			_targetId = e._targetId;
+			if (e.Target is Controller)
+				_target = c;
+			_controllerId = e._controllerId;
+			_creatorId = e._creatorId;
+			_capturedCard = e._capturedCard;
+			//e.OngoingEffect?.Clone(this);
+			e.ActivatedTrigger?.Activate(this);
+			//Game.IdEntityDic.Add(Id, this);
+			Game.IdEntityDic[Id] = this;
+			if (e.IsOneTurnActive)
+			{
+				c.Game.OneTurnEffectEnchantments.Add(this);
+				IsOneTurnActive = true;
+			}
 
-				if (e.IsOneTurnActive)
-					c.Game.OneTurnEffectEnchantments.Add(this);
+			//if (c.Game.History)
+			//{
+				Zone = c.BoardZone;
+				_tags = new EntityData(entityData: e._tags);
+			//}
 
-				//if (c.Game.History)
-				//{
-					Zone = c.BoardZone;
-					_tags = new EntityData(entityData: e._tags);
-				//}
+			if (Power.Enchant?.RemoveWhenPlayed ?? false)
+			{
+				Enchant.RemoveWhenPlayedTrigger.Activate(this);
+			}
 
-				if (Power.Enchant?.RemoveWhenPlayed ?? false)
-				{
-					Enchant.RemoveWhenPlayedTrigger.Activate(this);
-				}
-
-				if (e.Creator is Enchantment eCreator)
-					eCreator.Clone(in c);
-
-		}
-
-		public void setTarget(in Controller c, in Enchantment e){
-			Target = e.Target is IPlayable ? (IEntity) Game.IdEntityDic[e.Target.Id] : c;
+			if (e.Creator is Enchantment eCreator)
+				_creator = eCreator.Clone(in c);
 		}
 
 		public int this[GameTag t]
 		{
 			get => _tags.TryGetValue(t, out int value) ? value : 0;
-			set => _tags[t] = value;
+			set
+			{
+				if (_history && (int)t < 1000)
+					if (value != this[t])
+						Game.PowerHistory.Add(PowerHistoryBuilder.TagChange(Id, t, value));
+				_tags[t] = value;
+			}
 		}
 
 		/// <summary>
 		/// The entity that this enchantment is attached to.
 		/// </summary>
-		public IEntity Target { get; private set; }
+		//public IEntity Target { get; private set; }
+		public IEntity Target
+		{
+			get => _target ?? (_target = Game.IdEntityDic[_targetId]);
+			private set
+			{
+				_targetId = value.Id;
+				_target = value;
+			}
+		}
 
 		/// <summary>
 		/// <see cref="SabberStoneCore.Model.Card"/> information captured in this instance.
@@ -135,7 +151,7 @@ namespace SabberStoneCore.Model.Entities
 			}
 		}
 
-		public bool IsOneTurnActive => Card[GameTag.TAG_ONE_TURN_EFFECT] == 1;
+		public bool IsOneTurnActive { get; private set; }
 
 		public int ScriptTag1 => this[GameTag.TAG_SCRIPT_DATA_NUM_1];
 
@@ -149,7 +165,7 @@ namespace SabberStoneCore.Model.Entities
 		/// <param name="target">The entity who is subjected to the enchantment.</param>
 		/// <param name="card">The card from which the enchantment must be derived.</param>
 		/// <returns>The resulting enchantment entity.</returns>
-		public static Enchantment GetInstance(in Controller controller, in IPlayable creator, in IEntity target, in Card card)
+		public static Enchantment GetInstance(in Controller controller, in IPlayable creator, in IEntity target, in Card card, int num1 = 0, int num2 = 0)
 		{
 			int id = controller.Game.NextId;
 
@@ -180,46 +196,36 @@ namespace SabberStoneCore.Model.Entities
 					Entity = new PowerHistoryEntity
 					{
 						Id = instance.Id,
+						Name = "",
 						Tags = tags.ToDictionary(k => k.Key, k => k.Value)
 					}
 				});
 
 				if (!(target.Zone is DeckZone))
 				{
+					var gameTags = new Dictionary<GameTag, int>
+					{
+						{GameTag.CONTROLLER, controller.PlayerId},
+						{GameTag.CARDTYPE, (int) CardType.ENCHANTMENT},
+						{GameTag.ATTACHED, target.Id},
+						{GameTag.DAMAGE, 0},
+						{GameTag.ZONE, (int) Enums.Zone.SETASIDE},
+						{GameTag.ENTITY_ID, instance.Id},
+						{GameTag.ZONE_POSITION, 0},
+						{GameTag.CREATOR, creator.Id},
+						{GameTag.TAG_LAST_KNOWN_COST_IN_HAND, 0}
+						//	CREATOR_DBID
+						//	479
+					};
+					if (card[GameTag.TAG_ONE_TURN_EFFECT] == 1)
+						gameTags.Add(GameTag.TAG_ONE_TURN_EFFECT, 1);
 					controller.Game.PowerHistory.Add(new PowerHistoryShowEntity
 					{
 						Entity = new PowerHistoryEntity
 						{
 							Id = instance.Id,
-							Name = instance.Card.Name,
-							Tags = new Dictionary<GameTag, int>
-							{
-								{GameTag.CONTROLLER, controller.PlayerId},
-								{GameTag.CARDTYPE, (int) CardType.ENCHANTMENT},
-								{GameTag.PREMIUM, creator[GameTag.PREMIUM]},
-								{GameTag.ATTACHED, target.Id},
-								{GameTag.DAMAGE, 0},
-								{GameTag.ZONE, (int) Enums.Zone.SETASIDE},
-								{GameTag.ENTITY_ID, instance.Id},
-								{GameTag.SILENCE, 0},
-								{GameTag.WINDFURY, 0},
-								{GameTag.TAUNT, 0},
-								{GameTag.STEALTH, 0},
-								{GameTag.DIVINE_SHIELD, 0},
-								{GameTag.CHARGE, 0},
-								{GameTag.FROZEN, 0},
-								{GameTag.ZONE_POSITION, 0},
-								{GameTag.NUM_ATTACKS_THIS_TURN, 0},
-								{GameTag.CREATOR, creator.Id},
-								{GameTag.FORCED_PLAY, 0},
-								{GameTag.TO_BE_DESTROYED, 0},
-								{GameTag.POISONOUS, 0},
-								{GameTag.CUSTOM_KEYWORD_EFFECT, 0},
-								{GameTag.EXTRA_ATTACKS_THIS_TURN, 0},
-								{GameTag.TAG_LAST_KNOWN_ATK_IN_HAND, 0},
-								//	479
-								{GameTag.LIFESTEAL, 0}
-							}
+							Name = instance.Card.Id,
+							Tags = gameTags
 						}
 					});
 				}
@@ -228,7 +234,10 @@ namespace SabberStoneCore.Model.Entities
 			}
 
 			if (card[GameTag.TAG_ONE_TURN_EFFECT] == 1)
+			{
+				instance.IsOneTurnActive = true;
 				controller.Game.OneTurnEffectEnchantments.Add(instance);
+			}
 
 
 			instance.Zone = controller.BoardZone;
@@ -240,6 +249,13 @@ namespace SabberStoneCore.Model.Entities
 
 			controller.Game.Log(LogLevel.VERBOSE, BlockType.ACTION, "Enchantment",
 				!controller.Game.Logging ? "" : $"Enchantment {card} created by {creator} is added to {target}.");
+
+			if (num1 > 0)
+			{
+				tags.Add(GameTag.TAG_SCRIPT_DATA_NUM_1, num1);
+				if (num2 > 0)
+					tags.Add(GameTag.TAG_SCRIPT_DATA_NUM_2, num2);
+			}
 
 			return instance;
 		}
@@ -293,6 +309,9 @@ namespace SabberStoneCore.Model.Entities
 
 	public partial class Enchantment
 	{
+		protected readonly bool _history;
+		protected readonly bool _logging;
+
 		public int Id { get; }
 		public int OrderOfPlay { get; set; }
 		public Game Game { get; set; }
@@ -315,6 +334,7 @@ namespace SabberStoneCore.Model.Entities
 		public bool HasDeathrattle { get; set; }
 		public bool HasLifeSteal { get; set; }
 		public bool IsEcho => false;
+		public bool HasOverkill => false;
 		public IPlayable[] ChooseOnePlayables { get; set; }
 		public AuraEffects AuraEffects { get; set; }
 		public IDictionary<GameTag, int> NativeTags => _tags;
