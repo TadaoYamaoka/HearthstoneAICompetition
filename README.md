@@ -15,7 +15,10 @@ The collectible online card game Hearthstone features a rich testbed and poses u
 
 Entrants will submit agents to participate in one of the two tracks:
 
-* **Premade Deck Playing”-track:** participants will receive a list of three known decks and three decks unknown prior submission. During evaluation we will simulate all possible matchups for at least 100 games to determine the average win-rate for each agent. Determining and using the characteristics of the player’s and the opponent’s deck to the player’s advantage will help in winning the game. The decks for the premade deck playing track will be published at the 17 April.
+* **Premade Deck Playing”-track:** participants will receive a list of six known decks and three decks unknown prior to your submission. During the evaluation, we will simulate all possible matchups for at least 100 games to determine the average win-rate for each agent. Determining and using the characteristics of the player’s and the opponent’s deck to the player’s advantage will help in winning the game. The following decks will be known in advance (please check their definition in „core-extensions\SabberStoneBasicAI\src\Meta\Decks.cs“)
+
+	- Aggro Pirate Warrior, Midrange Jade Shaman, Reno Kazakus Mage, Midrange Buff Paladin, Miracle Pirate Rogue, Zoo Discard Warlock
+
 
 * **“User Created Deck Playing”-track:** the competition framework allows agents to define their own deck. Finding a deck that can consistently beat a vast amount of other decks will play a key role in this competition track. Additionally, it gives the participants the chance in optimizing the agents’ strategy to the characteristics of their chosen deck.
 
