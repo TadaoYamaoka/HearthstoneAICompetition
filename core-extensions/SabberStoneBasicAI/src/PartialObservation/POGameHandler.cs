@@ -5,6 +5,7 @@ using SabberStoneCore.Enums;
 using SabberStoneCore.Model.Entities;
 using SabberStoneBasicAI.AIAgents;
 using SabberStoneCore.Tasks.PlayerTasks;
+using System.Collections.Generic;
 
 namespace SabberStoneBasicAI.PartialObservation
 {
@@ -50,6 +51,26 @@ namespace SabberStoneBasicAI.PartialObservation
 			bool printGame = false;
 
 			game.StartGame();
+			if (gameConfig.SkipMulligan == false)
+			{
+				var originalStartingPlayer = game.CurrentPlayer;
+				var originalStartinOpponent = game.CurrentOpponent;
+
+				game.CurrentPlayer = originalStartingPlayer;
+				currentAgent = gameConfig.StartPlayer == 1 ? player1 : player2;
+				poGame = new POGame(game, debug);
+				playertask = currentAgent.GetMove(poGame);
+				game.Process(playertask);
+
+				game.CurrentPlayer = originalStartinOpponent;
+				currentAgent = gameConfig.StartPlayer == 1 ? player2 : player1;
+				poGame = new POGame(game, debug);
+				playertask = currentAgent.GetMove(poGame);
+				game.Process(playertask);
+
+				game.CurrentPlayer = originalStartingPlayer;
+				game.MainReady();
+			}
 #if DEBUG
 			try
 			{

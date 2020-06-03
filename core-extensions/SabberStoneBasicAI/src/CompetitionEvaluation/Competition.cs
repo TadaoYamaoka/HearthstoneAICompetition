@@ -31,7 +31,7 @@ namespace SabberStoneBasicAI.CompetitionEvaluation
 		public int WinsPlayer2 { get; private set; }
 		public int ExceptionsPlayer1 { get; private set; }
 		public int ExceptionsPlayer2 { get; private set; }
-		public int GamesPlayed {get; private set; }
+		public int GamesPlayed { get; private set; }
 
 		public MatchupResult(int WinsPlayer1 = 0, int WinsPlayer2 = 0, int ExceptionsPlayer1 = 0, int ExceptionsPlayer2 = 0)
 		{
@@ -57,7 +57,8 @@ namespace SabberStoneBasicAI.CompetitionEvaluation
 			{
 				WinsPlayer1 += 1;
 				if (exceptionplayer2) ExceptionsPlayer2 += 1;
-			} else
+			}
+			else
 			{
 				WinsPlayer2 += 1;
 				if (exceptionplayer1) ExceptionsPlayer1 += 1;
@@ -194,7 +195,7 @@ namespace SabberStoneBasicAI.CompetitionEvaluation
 					throw new Exception($"this resultfile does not correspond to the current competition type ({CompetitionName}!={CompetitionType})");
 				sr.ReadLine(); // skip empty line
 
-				if ((s= sr.ReadLine()) == "Agents")
+				if ((s = sr.ReadLine()) == "Agents")
 				{
 					int agent_idx = 0;
 					while ((s = sr.ReadLine()) != "")
@@ -202,7 +203,8 @@ namespace SabberStoneBasicAI.CompetitionEvaluation
 						if (s != agents[agent_idx].AgentAuthor)
 							throw new Exception($"Agent with index {agent_idx} not matching competition agents ({s}!={agents[agent_idx].AgentAuthor})");
 					}
-				} else
+				}
+				else
 				{
 					throw new Exception($"Expected 'Agents' but found {s}");
 				}
@@ -257,7 +259,7 @@ namespace SabberStoneBasicAI.CompetitionEvaluation
 				Thread[] threads = new Thread[nr_of_threads];
 				for (int i = 0; i < nr_of_threads; i++)
 				{
-					
+
 					Thread worker = new Thread(() => processMatchupsUntilDone());
 					threads[i] = worker;
 					worker.Start();
@@ -283,7 +285,7 @@ namespace SabberStoneBasicAI.CompetitionEvaluation
 				if (successfull)
 					processMatchup(task);
 			}
-				
+
 		}
 
 		public void processMatchup(EvaluationTask task)
@@ -303,6 +305,7 @@ namespace SabberStoneBasicAI.CompetitionEvaluation
 				Player2HeroClass = decks[task.idx_deck_2].cardclass,
 				Player1Deck = decks[task.idx_deck_1].cards,
 				Player2Deck = decks[task.idx_deck_1].cards,
+				SkipMulligan = false,
 			};
 
 			GameStats gameStats = null;
@@ -368,7 +371,7 @@ namespace SabberStoneBasicAI.CompetitionEvaluation
 							games_lost_by_exception += results[player_2, player_1, deck_2, deck_1].ExceptionsPlayer2;
 						}
 				}
-				Console.WriteLine($"Agent {agents[player_1].AgentAuthor}'s win-rate={Math.Round(((float)games_won)/games_played,2)} " +
+				Console.WriteLine($"Agent {agents[player_1].AgentAuthor}'s win-rate={Math.Round(((float)games_won) / games_played, 2)} " +
 					$"({games_won} out of {games_played} games). {games_lost_by_exception} were lost by Exception.");
 			}
 		}

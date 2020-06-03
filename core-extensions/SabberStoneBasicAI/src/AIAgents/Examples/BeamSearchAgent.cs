@@ -17,12 +17,20 @@ namespace SabberStoneBasicAI.AIAgents
 
 		public override PlayerTask GetMove(POGame game)
 		{
+			var player = game.CurrentPlayer;
+			// Implement a simple Mulligan Rule
+			if (player.MulliganState == Mulligan.INPUT)
+			{
+				List<int> mulligan = new AggroScore().MulliganRule().Invoke(player.Choice.Choices.Select(p => game.getGame().IdEntityDic[p]).ToList());
+				return ChooseTask.Mulligan(player, mulligan);
+			}
+
 			int depth;
 			int beamWidth;
 
 			// Check how much time we have left on this turn. The hard limit is 75 seconds so we already stop
 			// beam searching when 60 seconds have passed, just to be sure.
-			if (_watch.ElapsedMilliseconds < 60 * 1000)
+			if (_watch.ElapsedMilliseconds < 30 * 1000)
 			{ // We still have ample time, proceed with beam search
 				depth = 15;
 				beamWidth = 12;
@@ -31,7 +39,7 @@ namespace SabberStoneBasicAI.AIAgents
 			{ // Time is running out, just simulate one timestep now
 				depth = 1;
 				beamWidth = 1;
-				Console.WriteLine("Over 60s in turn already. Pausing beam search for this turn!");
+				Console.WriteLine("Over 30s in turn already. Pausing beam search for this turn!");
 			}
 
 			_watch.Start();

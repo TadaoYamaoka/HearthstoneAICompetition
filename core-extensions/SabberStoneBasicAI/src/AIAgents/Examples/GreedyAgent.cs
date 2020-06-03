@@ -3,6 +3,7 @@ using SabberStoneCore.Enums;
 using SabberStoneBasicAI.Score;
 using SabberStoneCore.Tasks.PlayerTasks;
 using SabberStoneBasicAI.PartialObservation;
+using System.Collections.Generic;
 
 //Developed by Oskar Kirmis and Florian Koch and submitted to the 2018 Hearthstone AI Competition's Premade Deck Playing Track
 namespace SabberStoneBasicAI.AIAgents
@@ -19,6 +20,13 @@ namespace SabberStoneBasicAI.AIAgents
 		public override PlayerTask GetMove(POGame game)
 		{
 			var player = game.CurrentPlayer;
+
+			// Implement a simple Mulligan Rule
+			if (player.MulliganState == Mulligan.INPUT)
+			{
+				List<int> mulligan = new AggroScore().MulliganRule().Invoke(player.Choice.Choices.Select(p => game.getGame().IdEntityDic[p]).ToList());
+				return ChooseTask.Mulligan(player, mulligan);
+			}
 
 			// Get all simulation results for simulations that didn't fail
 			var validOpts = game.Simulate(player.Options()).Where(x => x.Value != null);

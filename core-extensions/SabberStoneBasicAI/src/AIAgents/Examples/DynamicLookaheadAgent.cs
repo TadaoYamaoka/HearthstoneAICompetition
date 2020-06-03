@@ -4,6 +4,7 @@ using System.Linq;
 using SabberStoneBasicAI.PartialObservation;
 using SabberStoneCore.Tasks.PlayerTasks;
 using SabberStoneCore.Model.Entities;
+using SabberStoneCore.Enums;
 
 
 namespace SabberStoneBasicAI.AIAgents
@@ -73,6 +74,14 @@ namespace SabberStoneBasicAI.AIAgents
 		public override PlayerTask GetMove(POGame game)
 		{
 			var player = game.CurrentPlayer;
+			// Implement a simple Mulligan Rule
+			if (player.MulliganState == Mulligan.INPUT)
+			{
+				List<int> mulligan = new CustomScore().MulliganRule().Invoke(player.Choice.Choices.Select(p => game.getGame().IdEntityDic[p]).ToList());
+				return ChooseTask.Mulligan(player, mulligan);
+			}
+
+
 			var validOpts = game.Simulate(player.Options()).Where(x => x.Value != null);
 			var optcount = validOpts.Count();
 
