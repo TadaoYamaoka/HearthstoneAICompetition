@@ -62,7 +62,7 @@ namespace SabberStoneBasicAI
 			decks[1] = new CompetitionEvaluation.Deck(Decks.AggroPirateWarrior, CardClass.WARRIOR, "Warrior");
 			decks[2] = new CompetitionEvaluation.Deck(Decks.MidrangeJadeShaman, CardClass.SHAMAN, "Shaman");
 
-			RoundRobinCompetition competition = new RoundRobinCompetition(agents, decks, "");
+			RoundRobinCompetition competition = new RoundRobinCompetition(agents, decks, "results.txt");
 			competition.CreateTasks(100);
 			competition.startEvaluation(8);
 

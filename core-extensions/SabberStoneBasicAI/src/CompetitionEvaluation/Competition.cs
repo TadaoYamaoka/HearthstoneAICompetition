@@ -4,11 +4,11 @@ using SabberStoneCore.Model;
 using System;
 using System.Collections.Generic;
 using System.Threading;
-using System.Threading.Tasks;
 using System.IO;
 using SabberStoneCore.Config;
 using SabberStoneBasicAI.PartialObservation;
 using System.Collections.Concurrent;
+using System.Numerics;
 
 namespace SabberStoneBasicAI.CompetitionEvaluation
 {
@@ -42,6 +42,15 @@ namespace SabberStoneBasicAI.CompetitionEvaluation
 			GamesPlayed = WinsPlayer1 + WinsPlayer2 + ExceptionsPlayer1 + ExceptionsPlayer2;
 		}
 
+		public MatchupResult(string[] values)
+		{
+			this.WinsPlayer1 = int.Parse(values[5]);
+			this.WinsPlayer2 = int.Parse(values[6]);
+			this.ExceptionsPlayer1 = int.Parse(values[7]);
+			this.ExceptionsPlayer2 = int.Parse(values[8]);
+			GamesPlayed = WinsPlayer1 + WinsPlayer2 + ExceptionsPlayer1 + ExceptionsPlayer2;
+		}
+
 		public void addResult(bool player1won, bool player2won, bool exceptionplayer1, bool exceptionplayer2)
 		{
 			if (player1won == player2won)
@@ -65,6 +74,41 @@ namespace SabberStoneBasicAI.CompetitionEvaluation
 			}
 
 			GamesPlayed += 1;
+		}
+
+		public void writeToFile(string resultfile, int idx_player_1, int idx_player_2, int idx_deck_1, int idx_deck_2)
+		{
+			if (!File.Exists(resultfile))
+			{
+				// Create a file to write to.
+				using (StreamWriter sw = File.CreateText(resultfile))
+				{
+				}
+			}
+
+			// try to write to the file. if another thread is currently writing to the file, wait a short time-span and try again
+			bool file_written = false;
+			while (file_written == false)
+			{
+				try
+				{
+					using (StreamWriter sw = File.AppendText(resultfile))
+					{
+						sw.WriteLine(String.Format("Match Result: {0} {1} {2} {3} {4} {5} {6} {7}", idx_player_1, idx_player_2, idx_deck_1, idx_deck_2,
+							WinsPlayer1, WinsPlayer2, ExceptionsPlayer1, ExceptionsPlayer2));
+					}
+					file_written = true;
+				}
+				catch (Exception e)
+				{
+					Thread.Sleep(10);
+				}
+			}
+		}
+
+		public override string ToString()
+		{
+			return String.Format("{0} {1} {2} {3}", WinsPlayer1, WinsPlayer2, ExceptionsPlayer1, ExceptionsPlayer2);
 		}
 
 	}
@@ -119,6 +163,7 @@ namespace SabberStoneBasicAI.CompetitionEvaluation
 		Deck[] decks;
 		MatchupResult[,,,] results;
 		ConcurrentQueue<EvaluationTask> tasks;
+		string resultfile;
 		string CompetitionType = "RoundRobin_DeckPlaying";
 
 		public RoundRobinCompetition(Agent[] agents, Deck[] decks, string resultfile)
@@ -126,12 +171,10 @@ namespace SabberStoneBasicAI.CompetitionEvaluation
 			//store agents and decks
 			this.agents = agents;
 			this.decks = decks;
+			this.resultfile = resultfile;
 
-
-			if (Directory.Exists(resultfile))
-				results = LoadPreviousResults(resultfile);
-			else
-			{
+			if (resultfile != null)
+			{ 
 				InitializeResults();
 			}
 		}
@@ -152,6 +195,59 @@ namespace SabberStoneBasicAI.CompetitionEvaluation
 						{
 							results[player_1, player_2, deck_1, deck_2] = new MatchupResult();
 						}
+					}
+				}
+			}
+
+			if (resultfile != null && File.Exists(resultfile))
+				LoadPreviousResults(resultfile);
+
+
+			if (!File.Exists(resultfile))
+			{
+				// Create a file to write to.
+				using (StreamWriter sw = File.CreateText(resultfile))
+				{
+				}
+			}
+			WriteCurrentStateToFile();
+		}
+
+		private void WriteCurrentStateToFile()
+		{
+			if (resultfile != null)
+			{
+				using (StreamWriter sw = File.CreateText(resultfile))
+				{
+					sw.WriteLine(CompetitionType);
+					sw.WriteLine();
+
+					sw.WriteLine("Agents");
+					for (int i = 0; i < agents.Length; i++)
+					{
+						sw.WriteLine(agents[i].AgentAuthor);
+					}
+					sw.WriteLine();
+
+					sw.WriteLine("Decks");
+					for (int i = 0; i < decks.Length; i++)
+					{
+						sw.WriteLine(decks[i].deckname);
+					}
+					sw.WriteLine();
+					sw.WriteLine("Match Results");
+				}
+
+				for (int i = 0; i < agents.Length; i++)
+				{
+					for (int j = i + 1; j < agents.Length; j++)
+					{
+						for (int deck_i = 0; deck_i < decks.Length; deck_i++)
+							for (int deck_j = 0; deck_j < decks.Length; deck_j++)
+								if (results[i, j, deck_i, deck_j] != null)
+								{
+									results[i, j, deck_i, deck_j].writeToFile(resultfile, i, j, deck_i, deck_j);
+								}
 					}
 				}
 			}
@@ -202,14 +298,13 @@ namespace SabberStoneBasicAI.CompetitionEvaluation
 					{
 						if (s != agents[agent_idx].AgentAuthor)
 							throw new Exception($"Agent with index {agent_idx} not matching competition agents ({s}!={agents[agent_idx].AgentAuthor})");
+						agent_idx++;
 					}
 				}
 				else
 				{
 					throw new Exception($"Expected 'Agents' but found {s}");
 				}
-				sr.ReadLine(); // skip empty line
-
 
 				if ((s = sr.ReadLine()) == "Decks")
 				{
@@ -218,20 +313,20 @@ namespace SabberStoneBasicAI.CompetitionEvaluation
 					{
 						if (s != decks[deck_idx].deckname)
 							throw new Exception($"Deck with index {deck_idx} not matching competition decks ({s}!={decks[deck_idx].deckname})");
+						deck_idx++;
 					}
 				}
 				else
 				{
 					throw new Exception($"Expected 'Decks' but found {s}");
 				}
-				sr.ReadLine(); // skip empty line
 
-				if ((s = sr.ReadLine()) == "MatchResults")
+				if ((s = sr.ReadLine()) == "Match Results")
 				{
 					while ((s = sr.ReadLine()) != null)
 					{
-						string[] line = s.Split(";");
-						throw new Exception($"Loading Match Results is not implemented yet!");
+						string[] values = s.Split(":")[1].Split(" ");
+						results[int.Parse(values[1]), int.Parse(values[2]), int.Parse(values[3]), int.Parse(values[4])] = new MatchupResult(values);
 					}
 				}
 				else
@@ -248,14 +343,6 @@ namespace SabberStoneBasicAI.CompetitionEvaluation
 			//create overall progress bar that keeps track of all finished matchups
 			if (nr_of_threads > 1)
 			{
-				/*
-				int y = 0;
-				Parallel.ForEach(tasks, new ParallelOptions { MaxDegreeOfParallelism = nr_of_threads },
-					(EvaluationTask matchup) =>
-				{
-					processMatchup(matchup);
-					Interlocked.Increment(ref y);
-				});*/
 				Thread[] threads = new Thread[nr_of_threads];
 				for (int i = 0; i < nr_of_threads; i++)
 				{
@@ -268,11 +355,13 @@ namespace SabberStoneBasicAI.CompetitionEvaluation
 				{
 					threads[i].Join();
 				}
+				WriteCurrentStateToFile();
 			}
 			else
 			{
 				foreach (EvaluationTask task in tasks)
 					processMatchup(task);
+				WriteCurrentStateToFile();
 			}
 		}
 
@@ -322,6 +411,10 @@ namespace SabberStoneBasicAI.CompetitionEvaluation
 				gameStats.PlayerA_Exceptions == 1,
 				gameStats.PlayerB_Exceptions == 1
 			);
+
+			if (resultfile != null)
+				results[task.idx_player_1, task.idx_player_2, task.idx_deck_1, task.idx_deck_2].
+					writeToFile(resultfile, task.idx_player_1, task.idx_player_2, task.idx_deck_1, task.idx_deck_2);
 		}
 
 		public int GetTotalGamesPlayed()
