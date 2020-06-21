@@ -132,7 +132,6 @@ namespace SabberStoneBasicAI.AIAgents.TYamaoka
 				Expand(root, poGameRoot);
 
 				long think_time = (30 * 1000 - stopwatchForThisTurn.ElapsedMilliseconds) / Math.Max(3, 10 - movesInThisTurn);
-				Console.WriteLine(think_time);
 				Stopwatch stopwatch = new Stopwatch();
 				stopwatch.Start();
 				while (stopwatch.ElapsedMilliseconds <= think_time)
@@ -184,6 +183,8 @@ namespace SabberStoneBasicAI.AIAgents.TYamaoka
 						Backup(node, value);
 					}
 				}
+				stopwatch.Stop();
+				Console.WriteLine($"{think_time}, {root.visitCount}, {root.visitCount * 1000 / stopwatch.ElapsedMilliseconds} nps");
 
 				// Choose the most visited node
 				float best = Single.MinValue;
