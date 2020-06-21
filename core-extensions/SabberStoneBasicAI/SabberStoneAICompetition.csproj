@@ -10,4 +10,7 @@
     <ProjectReference Include="..\..\SabberStoneCore\SabberStoneCore.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Reference Include="ObjectDumper"><HintPath>ObjectDumping.dll</HintPath></Reference>
+  </ItemGroup>
 </Project>

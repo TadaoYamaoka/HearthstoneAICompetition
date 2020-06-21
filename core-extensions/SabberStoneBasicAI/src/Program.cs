@@ -52,8 +52,11 @@ namespace SabberStoneBasicAI
 		public static void TestTournament()
 		{
 			Agent[] agents = new Agent[2];
-			agents[0] = new Agent(typeof(RandomAgent), "Random Agent");
-			agents[1] = new Agent(typeof(GreedyAgent), "Greedy Agent");
+			//agents[0] = new Agent(typeof(RandomAgent), "Random Agent");
+			agents[0] = new Agent(typeof(DynamicLookaheadAgent), "Dynamic Lookahead Agent");
+			//agents[1] = new Agent(typeof(GreedyAgent), "Greedy Agent");
+			//agents[1] = new Agent(typeof(SabberStoneCoreAi.Agent.AlvaroAgent), "AlvaroAgent");
+			agents[1] = new Agent(typeof(SabberStoneBasicAI.AIAgents.TYamaoka.MyAgent), "TYamaokaAgent");
 			//agents[2] = new Agent(typeof(DynamicLookaheadAgent), "Dynamic Lookahead Agent");
 			//agents[3] = new Agent(typeof(BeamSearchAgent), "Beam Search Agent");
 
@@ -64,7 +67,8 @@ namespace SabberStoneBasicAI
 
 			RoundRobinCompetition competition = new RoundRobinCompetition(agents, decks, "results.txt");
 			competition.CreateTasks(100);
-			competition.startEvaluation(8);
+			//competition.startEvaluation(8);
+			competition.startEvaluation(1);
 
 			Console.WriteLine("Total Games Played: " + competition.GetTotalGamesPlayed());
 			competition.PrintAgentStats();

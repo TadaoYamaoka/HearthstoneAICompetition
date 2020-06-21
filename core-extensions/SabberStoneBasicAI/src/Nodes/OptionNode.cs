@@ -106,7 +106,7 @@ namespace SabberStoneBasicAI.Nodes
 
 		public static List<OptionNode> GetSolutions(Game game, int playerId, IScore scoring, int maxDepth, int maxWidth)
 		{
-			var depthNodes = new Dictionary<string, OptionNode> { ["root"] = new OptionNode(null, game, playerId, null, scoring) };
+			var depthNodes = new Dictionary<string, OptionNode> { ["parent"] = new OptionNode(null, game, playerId, null, scoring) };
 			var endTurnNodes = new List<OptionNode>();
 			for (int i = 0; depthNodes.Count > 0 && i < maxDepth; i++)
 			{
