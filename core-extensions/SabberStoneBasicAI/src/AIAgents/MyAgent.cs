@@ -6,26 +6,26 @@ using SabberStoneCore.Tasks.PlayerTasks;
 using SabberStoneBasicAI.PartialObservation;
 using SabberStoneCore.Enums;
 using SabberStoneCore.Model.Entities;
+using System.Text;
+using System.Security.Cryptography.X509Certificates;
 
 
 // TODO choose your own namespace by setting up <submission_tag>
 // each added file needs to use this namespace or a subnamespace of it
 namespace SabberStoneBasicAI.AIAgents.TYamaoka
 {
+	struct Edge
+	{
+		public int visitCount;
+		public float totalValue;
+		public int actionHashCode;
+	}
+
 	class Node
 	{
-		public Node() { }
-		public Node(Node parent, PlayerTask action)
-		{
-			this.parent = parent;
-			this.action = action;
-		}
-
 		public int visitCount = 0;
 		public float totalValue = 0;
-		public PlayerTask action;
-		public Node parent;
-		public List<Node> children = null;
+		public Edge[] edges = null;
 	}
 
 	class CustomScore : Score.Score
@@ -82,8 +82,9 @@ namespace SabberStoneBasicAI.AIAgents.TYamaoka
 	{
 		// parameters
 		private float C_UCT = 1.0f;
-		private int NUM_SIMULATIONS = 3;
 		private float FPU = 5.0f;
+
+		Dictionary<long, Node> nodeHashMap = new Dictionary<long, Node>();
 
 		Stopwatch stopwatchForThisTurn = new Stopwatch();
 		int movesInThisTurn = 0;
@@ -114,6 +115,8 @@ namespace SabberStoneBasicAI.AIAgents.TYamaoka
 				return ChooseTask.Mulligan(player, mulligan);
 			}
 
+			Console.WriteLine(GetGameHashCode(poGame));
+
 			PlayerTask bestAction = null;
 
 			if (poGame.CurrentPlayer.Options().Count == 1)
@@ -139,39 +142,42 @@ namespace SabberStoneBasicAI.AIAgents.TYamaoka
 				{
 					Node node = root;
 					poGame = poGameRoot;
+					int actionHashCodeNext = 0;
 
 					// traverse
 					do
 					{
-						var nodeNext = Select(node);
+						int index = Select(node);
+						actionHashCodeNext = node.edges[index].actionHashCode;
 
-						taskToSimulate[0] = nodeNext.action;
 						// Until the end of my own turn
-						if (nodeNext.action.PlayerTaskType != PlayerTaskType.END_TURN)
-						{
-							var poGameNext = poGame.Simulate(taskToSimulate)[nodeNext.action];
-							if (poGameNext == null)
-							{
-								// May be null because the transition is probabilistic
-								node.children.Remove(nodeNext);
-								continue;
-							}
-							poGame = poGameNext;
-						}
-						node = nodeNext;
-					} while (node.children != null);
+						if (actionHashCodeNext == 0)
+							break;
 
-					if (node.action.PlayerTaskType != PlayerTaskType.END_TURN)
+						foreach (PlayerTask task in poGame.CurrentPlayer.Options())
+						{
+							if (GetActionHashCode(task) == actionHashCodeNext)
+							{
+								taskToSimulate[0] = task;
+								break;
+							}
+						}
+
+						poGame = poGame.Simulate(taskToSimulate)[taskToSimulate[0]];
+						long gameHashCode = GetGameHashCode(poGame);
+						if (!nodeHashMap.TryGetValue(gameHashCode, out node))
+						{
+							node = new Node();
+							nodeHashMap.Add(gameHashCode, node);
+						}
+					} while (node.edges != null);
+
+					if (actionHashCodeNext != 0)
 					{
 						Expand(node, poGame);
 
-						// Since the transition is probabilistic, the expected value is obtained by performing multiple simulations.
-						float value = 0;
-						for (int i = 0; i < NUM_SIMULATIONS; ++i)
-						{
-							value += Simulate(node, poGame);
-						}
-						Backup(node, value / NUM_SIMULATIONS);
+						float value = Simulate(node, poGame);
+						Backup(node, value);
 					}
 					else
 					{
@@ -205,6 +211,7 @@ namespace SabberStoneBasicAI.AIAgents.TYamaoka
 				Console.WriteLine(movesInThisTurn);
 				stopwatchForThisTurn.Reset();
 				movesInThisTurn = 0;
+				nodeHashMap.Clear();
 			}
 
 			return bestAction;
@@ -212,14 +219,16 @@ namespace SabberStoneBasicAI.AIAgents.TYamaoka
 
 		private void Expand(Node node, POGame poGame)
 		{
-			node.children = new List<Node>();
-			foreach (PlayerTask task in poGame.CurrentPlayer.Options())
+			var options = poGame.CurrentPlayer.Options();
+			node.edges = new Edge[options.Count];
+			int i = 0;
+			foreach (PlayerTask task in options)
 			{
-				node.children.Add(new Node(node, task));
+				node.edges[i++].actionHashCode = GetActionHashCode(task);
 			}
 		}
 
-		private Node Select(Node node)
+		private int Select(Node node)
 		{
 			float maxUcb = Single.MinValue;
 			Node selected = null;
@@ -332,6 +341,115 @@ namespace SabberStoneBasicAI.AIAgents.TYamaoka
 			if (node.parent != null)
 			{
 				Backup(node.parent, result);
+			}
+		}
+
+		private static long GetGameHashCode(POGame poGame)
+		{
+			// hands
+			long handZoneCode = 0;
+			foreach (var hand in poGame.CurrentPlayer.HandZone)
+			{
+				handZoneCode += GetHashCode(hand.Card.Id);
+			}
+			long hash1 = ((5381 << 16) + 5381) ^ (handZoneCode & 0xFFFFFFFFL);
+			long hash2 = ((5381 << 16) + 5381) ^ (handZoneCode >> 32);
+
+			// board zone
+			long boardZoneCode = 0;
+			foreach (Minion entry in poGame.CurrentPlayer.BoardZone)
+			{
+				long entryHash1 = ((5381 << 16) + 5381) + entry.Health * 1566083941L;
+				long entryHash2 = ((5381 << 16) + 5381) + entry.AttackDamage * 1566083941L;
+				UpdateHashCode(ref entryHash1, ref entryHash2, entry.Card.Id);
+				boardZoneCode += entryHash1 + entryHash2;
+			}
+			hash1 = unchecked((hash1 << 5) + hash1) ^ (boardZoneCode & 0xFFFFFFFFL);
+			hash2 = unchecked((hash2 << 5) + hash2) ^ (boardZoneCode >> 32);
+
+			// hero
+			Hero hero = poGame.CurrentPlayer.Hero;
+			hash1 = unchecked((hash2 << 5) + hash1) + hero.Health * 1566083941L;
+			hash2 = unchecked((hash1 << 5) + hash2) + hero.Damage * 1566083941L;
+			hash1 = unchecked((hash2 << 5) + hash1) + hero.Armor * 1566083941L;
+
+			// ================================
+			// opponent
+
+			// board zone
+			long opponentBoardZoneCode = 0;
+			foreach (Minion entry in poGame.CurrentOpponent.BoardZone)
+			{
+				long entryHash1 = ((5381 << 16) + 5381) + entry.Health * 1566083941L;
+				long entryHash2 = ((5381 << 16) + 5381) + entry.AttackDamage * 1566083941L;
+				UpdateHashCode(ref entryHash1, ref entryHash2, entry.Card.Id);
+				boardZoneCode += unchecked(entryHash1 + (entryHash2 * 1566083941L));
+				opponentBoardZoneCode += entryHash1 + entryHash2;
+			}
+			hash1 = unchecked((hash1 << 5) + hash1) ^ (opponentBoardZoneCode & 0xFFFFFFFFL);
+			hash2 = unchecked((hash2 << 5) + hash2) ^ (opponentBoardZoneCode >> 32);
+
+			// hero
+			Hero opponentHero = poGame.CurrentOpponent.Hero;
+			hash1 = unchecked((hash2 << 5) + hash1) + opponentHero.Health * 1566083941L;
+			hash2 = unchecked((hash1 << 5) + hash2) + opponentHero.Damage * 1566083941L;
+			hash1 = unchecked((hash2 << 5) + hash1) + opponentHero.Armor * 1566083941L;
+
+			return hash1 + hash2;
+		}
+
+		private static long GetActionHashCode(PlayerTask action)
+		{
+			// CHOOSE, CONCEDE, END_TURN, HERO_ATTACK, HERO_POWER, MINION_ATTACK, PLAY_CARD
+			switch (action.PlayerTaskType)
+			{
+				case PlayerTaskType.END_TURN:
+					return 0;
+				case PlayerTaskType.HERO_ATTACK:
+					{
+						long hash1 = ((5381 << 16) + 5381) + 1 * 1566083941L;
+						long hash2 = ((5381 << 16) + 5381) + action.Target.CardTarget * 1566083941L;
+						return unchecked(hash1 + (hash2 * 1566083941L));
+					}
+				default:
+					return 0;
+			}
+		}
+
+		private static long GetHashCode(string s)
+		{
+			long hash1 = ((5381 << 16) + 5381) ^ s[0] * 1566083941L;
+			long hash2 = ((5381 << 16) + 5381) ^ s[1] * 1566083941L;
+
+			for (int i = s.Length - 1; i >= 0; --i)
+			{
+				long c = s[i] * 1566083941L;
+				hash1 = unchecked((hash2 << 5) + hash1) ^ c;
+
+				if (--i < 0)
+					break;
+
+				c = s[i] * 1566083941L;
+				hash2 = unchecked((hash1 << 5) + hash2) ^ c;
+			}
+
+			return hash1 + hash2;
+		}
+		private static void UpdateHashCode(ref long hash1, ref long hash2, string s)
+		{
+			hash1 = unchecked((hash2 << 5) + hash1) * 1566083941L;
+			hash2 = unchecked((hash1 << 5) + hash2) ^ s[1] * 1566083941L;
+
+			for (int i = s.Length - 1; i >= 0; --i)
+			{
+				long c = s[i] * 1566083941L;
+				hash1 = unchecked((hash2 << 5) + hash1) ^ c;
+
+				if (--i < 0)
+					break;
+
+				c = s[i] * 1566083941L;
+				hash2 = unchecked((hash1 << 5) + hash2) ^ c;
 			}
 		}
 	}
