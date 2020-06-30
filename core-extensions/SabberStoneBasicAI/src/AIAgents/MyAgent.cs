@@ -172,11 +172,11 @@ namespace SabberStoneBasicAI.AIAgents.TYamaoka
 					do
 					{
 						index = Select(node);
-						if (index >= node.edges.Count)
+						/*if (index >= node.edges.Count)
 						{
 							Console.WriteLine($"{index}, {node.edges.Count}, {node == root}");
 							Debugger.Break();
-						}
+						}*/
 						actionHashCodeNext = node.edges[index].actionHashCode;
 
 						// Until the end of my own turn
