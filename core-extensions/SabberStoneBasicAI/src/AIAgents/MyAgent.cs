@@ -15,16 +15,18 @@ namespace SabberStoneBasicAI.AIAgents.TYamaoka
 
 	class Edge
 	{
-		public Edge(long actionHashCode)
+		public Edge(long actionHashCode/*, string task*/)
 		{
 			visitCount = 0;
 			totalValue = 0;
 			this.actionHashCode = actionHashCode;
+			//this.task = task;
 		}
 
 		public int visitCount;
 		public float totalValue;
 		public long actionHashCode;
+		//public string task;
 	}
 
 	class Node
@@ -32,6 +34,7 @@ namespace SabberStoneBasicAI.AIAgents.TYamaoka
 		public int visitCount = 0;
 		public float totalValue = 0;
 		public List<Edge> edges = null;
+		//public POGame poGame;
 	}
 
 	class CustomScore : Score.Score
@@ -111,6 +114,7 @@ namespace SabberStoneBasicAI.AIAgents.TYamaoka
 		{
 		}
 
+		//POGame poGame2;
 		public override PlayerTask GetMove(POGame poGame)
 		{
 			var player = poGame.CurrentPlayer;
@@ -206,9 +210,21 @@ namespace SabberStoneBasicAI.AIAgents.TYamaoka
 							Console.WriteLine("---");
 							foreach (var edge in node.edges)
 							{
-								Console.WriteLine($"{edge.actionHashCode}");
+								Console.WriteLine($"{edge.task}, {edge.actionHashCode}");
 							}
+							poGame2 = node.poGame;
+							Console.WriteLine(poGame2.Turn);
 							Console.WriteLine(gameHashCode);
+							Console.WriteLine("---");
+							foreach (var minion in poGame.CurrentPlayer.BoardZone)
+							{
+								Console.WriteLine(minion.CantAttackHeroes);
+							}
+							var tasks = poGame.CurrentPlayer.Options();
+							foreach (PlayerTask task in tasks)
+							{
+								Console.WriteLine($"{task}, {GetActionHashCode(task)}");
+							}
 							Debugger.Break();*/
 						}
 
@@ -227,6 +243,7 @@ namespace SabberStoneBasicAI.AIAgents.TYamaoka
 						if (!nodeHashMap.TryGetValue(gameHashCode, out node))
 						{
 							node = new Node();
+							//node.poGame = poGame;
 							nodeHashMap.Add(gameHashCode, node);
 						}
 					} while (node.edges != null);
@@ -317,7 +334,7 @@ namespace SabberStoneBasicAI.AIAgents.TYamaoka
 #if DEBUG
 				Console.WriteLine($"{task}, {code}");
 #endif
-				node.edges.Add(new Edge(code));
+				node.edges.Add(new Edge(code/*, task.ToString()*/));
 			}
 		}
 
@@ -464,7 +481,10 @@ namespace SabberStoneBasicAI.AIAgents.TYamaoka
 			long handZoneCode = 0;
 			foreach (var hand in poGame.CurrentPlayer.HandZone)
 			{
-				handZoneCode += GetHashCode(hand.Card.Id);
+				long handHash1 = ((5381 << 16) + 5381) ^ hand.Cost * 1566083941L;
+				long handHash2 = (5381 << 16) + 5381;
+				UpdateHashCode(ref handHash1, ref handHash2, hand.Card.Id);
+				handZoneCode += handHash1 + handHash2;
 			}
 			hash2 = unchecked((hash2 << 5) + hash2) ^ handZoneCode;
 
@@ -619,6 +639,8 @@ namespace SabberStoneBasicAI.AIAgents.TYamaoka
 			hash2 = ((hash1 << 5) + hash2) + entry.NumAttacksThisTurn * 1566083941L;
 			hash1 = ((hash2 << 5) + hash1) + entry.Cost * 1566083941L;
 			hash2 = ((hash1 << 5) + hash2) + Convert.ToInt64(entry.HasCharge) * 1566083941L;
+			hash1 = ((hash2 << 5) + hash1) + Convert.ToInt64(entry.HasTaunt) * 1566083941L;
+			hash2 = ((hash1 << 5) + hash2) + Convert.ToInt64(entry.HasStealth) * 1566083941L;
 			hash1 = ((hash2 << 5) + hash1) + Convert.ToInt64(entry.IsExhausted) * 1566083941L;
 			hash2 = ((hash1 << 5) + hash2) + Convert.ToInt64(entry.IsFrozen) * 1566083941L;
 			if (entry.AuraEffects != null)
