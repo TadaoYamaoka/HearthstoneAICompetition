@@ -478,15 +478,11 @@ namespace SabberStoneBasicAI.AIAgents.TYamaoka
 			//Console.WriteLine($"1:hash1:{hash1}, hash2:{hash2}");
 
 			// hands
-			long handZoneCode = 0;
 			foreach (var hand in poGame.CurrentPlayer.HandZone)
 			{
-				long handHash1 = ((5381 << 16) + 5381) ^ hand.Cost * 1566083941L;
-				long handHash2 = (5381 << 16) + 5381;
-				UpdateHashCode(ref handHash1, ref handHash2, hand.Card.Id);
-				handZoneCode += handHash1 + handHash2;
+				hash1 = unchecked((hash2 << 5) + hash1) ^ hand.Cost * 1566083941L;
+				UpdateHashCode(ref hash1, ref hash2, hand.Card.Id);
 			}
-			hash2 = unchecked((hash2 << 5) + hash2) ^ handZoneCode;
 
 			// board zone
 			foreach (Minion entry in poGame.CurrentPlayer.BoardZone)
